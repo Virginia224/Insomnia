@@ -1,0 +1,186 @@
+---
+title: "Insomnia NMA draft"
+subtitle: "Prepared by Virginia Chiocchia on 11th June, refers to a single outcome analysis in a frequentist setting"
+output: 
+  word_document: 
+    fig_height: 7
+    fig_width: 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Make sure you have the needed libraries from R-Cran and Github:
+devtools
+NMAJags
+R2jags
+netmeta
+meta
+metafor
+readxl
+
+
+```{r, include=FALSE}
+library(devtools)
+install_github("esm-ispm-unibe-ch/NMAJags")
+library(NMAJags)
+library(R2jags)
+library(netmeta)
+library(meta)
+library(metafor)
+library(readxl)
+```
+
+First read your data. Modify the path and data name in 
+DATA <- read_excel("~/_mydrive/Schizophrenia/Schizo.xlsx", na = "NA")
+to make sure it works for you. But I urge you to keep the name DATA
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#get the data and select them
+DATA <- read_excel("~/Virginia/NMA insomnia/NMAinsomnia/24.5.MyrtoIncludedAllOutcomesClean.xlsx", na = "NA")
+
+
+```
+
+#Description of the network
+
+Below is a description for the network formed by studies examining the outcome NAME THE OUTCOME. 
+
+Below are the total number of participants in each of the included drug
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#describe the data
+tapply(DATA$N_arm_total_stapf,DATA$Drug_name,sum,na.rm=T)
+
+```
+Number of drugs:
+```{r, echo=FALSE}
+print(length(table(DATA$Drug_name)))
+```
+Number of studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+print(length(table(DATA$Final_ID_all)))
+```
+
+
+The plot below shows the available data
+```{r, include=FALSE}
+#prepare the data
+DATApairs=pairwise(treat=Drug_name,mean=SleepTimeTotalScaleMean,sd=SleepTimeTotalScaleSD,n=SleepTimeTotalScaleParticipants, data=DATA, studlab = Final_ID_all, sm= "SMD")
+#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
+netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+#remove rows for studies disconnected from main network
+DPs <- subset(DATApairs, treat2!="waitlist" & treat2!="artificial juice" & treat2!="sleep hygiene" & treat2!="oxazepam")
+#check p-value availability for paired t-test
+DPs[,c("studlab","tst_PorF-value","tst_p=0, f=1")][DPs$Crossoverstudy==1,]
+#remove crossover studies with paired t-test p-value not available or less than
+DPs <- DPs[DPs$studlab!=161 & DPs$studlab!=185,]
+#now calculate adjusted SE for remaining crossover studies
+DPs$tvalue <- qt(as.numeric(DPs$`tst_PorF-value`), df=DPs$n1-1)
+DPs[DPs$Crossoverstudy==1,"seTE"] <- (DPs$TE/DPs$tvalue)[DPs$Crossoverstudy==1]
+
+
+EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
+
+```
+
+
+
+```{r, echo=FALSE}
+
+#network plot
+netgraph(EFF, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
+```
+
+
+
+
+
+
+
+################################ NOT YET RUN FROM THIS POINT ONWARDS ############################################
+
+#Frequentist network meta-analysis 
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(EFF, ref="Placebo", sortvar = -Pscore,xlab="SMD")
+```
+
+
+The P-scores (equivalent to the SUCRAs) are shown below
+```{r, echo=FALSE}
+netrank(EFF)
+```
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(EFF$tau,3)))
+```
+and I-square (total) is 
+```{r, echo=FALSE}
+cat(paste("I2=",round(EFF$I2),"%"))
+```
+
+There is little/no/important evidence of inconsistency in the data. There are in total
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+split=netsplit(EFF) 
+SIDEp=split$compare.random$p
+SIDEp=SIDEp[!is.na(SIDEp)]
+#proportion of inconsistent loops
+cat(length(SIDEp))
+```
+
+comparisons in the network, and there is inconsistency (according to SIDE p-value<0.10) in
+
+```{r, echo=F, message=FALSE, warning=FALSE}
+cat(length(SIDEp[SIDEp<=0.1]))
+```
+loops which gives a % of inconsistent loops equal to
+```{r, echo=F, message=FALSE, warning=FALSE}
+cat(paste(round((length(SIDEp[SIDEp<=0.1])/length(SIDEp))*100,1),"%"))
+```
+
+
+
+The p-value from the design-by-treatment test is
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+a=decomp.design(EFF)
+print(round(a$Q.inc.random$pval,3))
+```
+#Sensitivity analyses and meta-regressions
+
+We run two sensitivity analyses to detect any important effect modification
+```{r, include=FALSE}
+
+#only HtH
+SchizoEFFHtH=subset(DATA,Placebo==0)
+SchizoEFFpairsHtH=pairwise(treat=Drug,mean=OverallEfficM,sd=OverallEfficSD,n=OverallEfficN, data=SchizoEFFHtH, studlab = Study_No, sm= "SMD")
+EFFHtH<-netmeta(TE,seTE,treat1,treat2,studlab,data=SchizoEFFpairsHtH,  sm="SMD",comb.fixed =F, comb.random = T, tol.multiarm=T)
+
+
+
+#only double blinded
+SchizoEFF2B=subset(DATA,Blinding_type==2)
+SchizoEFFpairs2B=pairwise(treat=Drug,mean=OverallEfficM,sd=OverallEfficSD,n=OverallEfficN, data=SchizoEFF2B, studlab = Study_No, sm= "SMD")
+EFF2B<-netmeta(TE,seTE,treat1,treat2,studlab,data=SchizoEFFpairs2B,  sm="SMD",ref="Placebo",comb.fixed =F, comb.random = T, tol.multiarm=T)
+
+
+
+```
+
+```{r, echo=FALSE}
+
+forest(EFFHtH, ref="Ziprasidone",sortvar = -Pscore, smlab="Only head-to-head studies", fontsize=10)
+
+
+forest(EFF2B, ref="Placebo",sortvar = -Pscore, smlab="Only double-blinded studies", fontsize=10)
+
+
+```
+
+
