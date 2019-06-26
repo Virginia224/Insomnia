@@ -75,7 +75,7 @@ DPs[,c("studlab","tst_PorF-value","tst_p=0, f=1")][DPs$Crossoverstudy==1,]
 #remove crossover studies with paired t-test p-value not available
 DPs <- DPs[DPs$studlab!=161,]
 # use threshold value for those with p-value <0.001
-DPs[DPs$studlab==185, "tst_PorF-value"] <- 0.001
+DPs[DPs$studlab==185, "tst_PorF-value"] <- 0.00099
 #now calculate adjusted SE for remaining crossover studies
 DPs$tvalue <- qt(as.numeric(DPs$`tst_PorF-value`), df=DPs$n1-1)
 DPs$SDd <- (DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1)
