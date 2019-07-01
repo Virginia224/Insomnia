@@ -83,7 +83,7 @@ DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
 DPs[DPs$Crossoverstudy==1,"seTE"] <- sqrt((1/DPs$n1 + DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1] 
 
 
-EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)
+EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    ### gives error: Problems in multi-arm studies! Studies with negative treatment arm variance: '18', '185'
 
 ```
 
