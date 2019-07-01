@@ -77,8 +77,8 @@ DPs <- DPs[DPs$studlab!=161,]
 # use threshold value for those with p-value <0.001
 DPs[DPs$studlab==185, "tst_PorF-value"] <- 0.00099
 #now calculate adjusted SE for remaining crossover studies
-DPs$tvalue <- qt(as.numeric(DPs$`tst_PorF-value`), df=DPs$n1-1)
-DPs$SDd <- (DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1)
+DPs$tvalue <- qt(as.numeric(DPs$`tst_PorF-value`), df=DPs$n1-1, lower.tail = F)
+DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
 DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
 DPs[DPs$Crossoverstudy==1,"seTE"] <- sqrt((1/DPs$n1 + DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1] 
 
