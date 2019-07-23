@@ -1,6 +1,6 @@
 ---
 title: "Insomnia NMA draft"
-subtitle: "Prepared by Virginia Chiocchia on 11th June, refers to a single outcome analysis in a frequentist setting"
+subtitle: "Prepared by Virginia Chiocchia on 23rd July, refers to a single outcome analysis (Total Sleep Time) in a frequentist setting"
 output: 
   word_document: 
     fig_height: 7
@@ -44,15 +44,15 @@ DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesCle
 
 #Description of the network
 
-Below is a description for the network formed by studies examining the outcome NAME THE OUTCOME. 
+Below is a description for the network formed by studies examining the outcome Total Sleep Time.
 
-Below are the total number of participants in each of the included drug
+Below are the total number of participants in each of the included interventions
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #describe the data
 tapply(DATA$N_arm_total_stapf,DATA$Drug_name,sum,na.rm=T)
 
 ```
-Number of drugs:
+Number of interventions:
 ```{r, echo=FALSE}
 print(length(table(DATA$Drug_name)))
 ```
@@ -82,7 +82,15 @@ DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
 DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
 
 
-EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    ### gives error: Problems in multi-arm studies! Studies with negative treatment arm variance: '18', '185'
+#   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    
+    ### gives error: Problems in multi-arm studies! Studies with negative treatment   arm variance: '18', '185'
+
+# assign other correlation value to study 18 and 185 based on other studies
+DPs[,c("studlab","rho")]
+DPs[DPs$studlab==18|DPs$studlab==185,"rho"] <- 0.9
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+TST<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
+TST
 
 ```
 
@@ -91,16 +99,11 @@ EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixe
 ```{r, echo=FALSE}
 
 #network plot
-netgraph(EFF, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
+netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
 ```
 
 
 
-
-
-
-
-################################ NOT YET RUN FROM THIS POINT ONWARDS ############################################
 
 #Frequentist network meta-analysis 
 
@@ -109,79 +112,72 @@ Below are the relative treatment effects from the NMA model.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
 #forest plots
-forest(EFF, ref="Placebo", sortvar = -Pscore,xlab="SMD")
+forest(TST, ref="pbo", sortvar = -Pscore,xlab="SMD")
 ```
 
 
 The P-scores (equivalent to the SUCRAs) are shown below
 ```{r, echo=FALSE}
-netrank(EFF)
+netrank(TST, small.values = "bad")
 ```
 
 The heterogeneity standard deviation is estimated at
 ```{r, echo=FALSE}
-cat(paste("tau=",round(EFF$tau,3)))
+cat(paste("tau=",round(TST$tau,3)))
 ```
 and I-square (total) is 
 ```{r, echo=FALSE}
-cat(paste("I2=",round(EFF$I2),"%"))
-```
-
-There is little/no/important evidence of inconsistency in the data. There are in total
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-split=netsplit(EFF) 
-SIDEp=split$compare.random$p
-SIDEp=SIDEp[!is.na(SIDEp)]
-#proportion of inconsistent loops
-cat(length(SIDEp))
-```
-
-comparisons in the network, and there is inconsistency (according to SIDE p-value<0.10) in
-
-```{r, echo=F, message=FALSE, warning=FALSE}
-cat(length(SIDEp[SIDEp<=0.1]))
-```
-loops which gives a % of inconsistent loops equal to
-```{r, echo=F, message=FALSE, warning=FALSE}
-cat(paste(round((length(SIDEp[SIDEp<=0.1])/length(SIDEp))*100,1),"%"))
+cat(paste("I2=",round(TST$I2),"%"))
 ```
 
 
 
-The p-value from the design-by-treatment test is
+<!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-a=decomp.design(EFF)
-print(round(a$Q.inc.random$pval,3))
-```
+<!-- ```{r echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- split=netsplit(EFF)  -->
+<!-- SIDEp=split$compare.random$p -->
+<!-- SIDEp=SIDEp[!is.na(SIDEp)] -->
+<!-- #proportion of inconsistent loops -->
+<!-- cat(length(SIDEp)) -->
+<!-- ``` -->
+
+<!-- comparisons in the network, and there is inconsistency (according to SIDE p-value<0.10) in -->
+
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(length(SIDEp[SIDEp<=0.1])) -->
+<!-- ``` -->
+<!-- loops which gives a % of inconsistent loops equal to -->
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(paste(round((length(SIDEp[SIDEp<=0.1])/length(SIDEp))*100,1),"%")) -->
+<!-- ``` -->
+
+
+
+<!-- The p-value from the design-by-treatment test is -->
+
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- a=decomp.design(EFF) -->
+<!-- print(round(a$Q.inc.random$pval,3)) -->
+<!-- ``` -->
+
+
 #Sensitivity analyses and meta-regressions
 
-We run two sensitivity analyses to detect any important effect modification
+We run a sensitivity analyses excluding the crossover studies
 ```{r, include=FALSE}
 
-#only HtH
-SchizoEFFHtH=subset(DATA,Placebo==0)
-SchizoEFFpairsHtH=pairwise(treat=Drug,mean=OverallEfficM,sd=OverallEfficSD,n=OverallEfficN, data=SchizoEFFHtH, studlab = Study_No, sm= "SMD")
-EFFHtH<-netmeta(TE,seTE,treat1,treat2,studlab,data=SchizoEFFpairsHtH,  sm="SMD",comb.fixed =F, comb.random = T, tol.multiarm=T)
-
-
-
-#only double blinded
-SchizoEFF2B=subset(DATA,Blinding_type==2)
-SchizoEFFpairs2B=pairwise(treat=Drug,mean=OverallEfficM,sd=OverallEfficSD,n=OverallEfficN, data=SchizoEFF2B, studlab = Study_No, sm= "SMD")
-EFF2B<-netmeta(TE,seTE,treat1,treat2,studlab,data=SchizoEFFpairs2B,  sm="SMD",ref="Placebo",comb.fixed =F, comb.random = T, tol.multiarm=T)
-
+#only non-crossover
+InsoTSTsen=subset(DPs,Crossoverstudy!=1 &`crossover, not first phase used`!=1)  ### can I just take a subset of the previous pairwise dataset? or do I need to do a subset of the original dataset and then do the pairwise again?
+TSTsens<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoTSTsen,  sm="SMD",comb.fixed =F, comb.random = T)
+TSTsens
 
 
 ```
 
 ```{r, echo=FALSE}
 
-forest(EFFHtH, ref="Ziprasidone",sortvar = -Pscore, smlab="Only head-to-head studies", fontsize=10)
-
-
-forest(EFF2B, ref="Placebo",sortvar = -Pscore, smlab="Only double-blinded studies", fontsize=10)
+forest(TSTsens, ref="pbo",sortvar = -Pscore, smlab="Only head-to-head studies", fontsize=10)
 
 
 ```
