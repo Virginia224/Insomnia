@@ -1,0 +1,115 @@
+---
+title: "Insomnia NMA"
+subtitle: "Prepared by Virginia Chiocchia on 23rd July, refers to a single outcome analysis (Sleep Quality) in a frequentist setting"
+output: 
+  word_document: 
+    fig_height: 7
+    fig_width: 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Make sure you have the needed libraries from R-Cran and Github:
+devtools
+NMAJags
+R2jags
+netmeta
+meta
+metafor
+readxl
+
+
+```{r, include=FALSE}
+library(devtools)
+install_github("esm-ispm-unibe-ch/NMAJags")
+library(NMAJags)
+library(R2jags)
+library(netmeta)
+library(meta)
+library(metafor)
+library(readxl)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#get the data and select them
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
+
+```
+
+
+
+
+```{r, include=FALSE}
+#prepare the data
+DATApairs=pairwise(treat=Drug_name,mean=SleepQualityScaleMean,sd=SleepQualityScaleSD,n=SleepQualityScaleParticipants, data=DATA, studlab = Final_ID_all, sm= "SMD")
+#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
+netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+#remove rows for studies disconnected from main network
+DPs <- subset(DATApairs, treat1!="BBT I" & treat1!="auricular acupuncture")
+DPs <- DPs[-grep("LAT|MAT|acupressure|waitlist|therapeutic|hygiene|juice",DPs$treat2),]
+#check p-value availability for paired t-test for crossover studies with both phases used
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","squal_PorF-value","squal_p=0, f=1")]
+# use threshold value for those with p-value <0.025
+DPs[DPs$studlab==17, "squal_PorF-value"] <- 0.02499
+# remove studies for which no p-value available
+DPs <- DPs[DPs$studlab!=94 & DPs$studlab!=21,]
+# now calculate adjusted SE for remaining crossover studies
+DPs$tvalue <- qt(as.numeric(DPs$`squal_PorF-value`)/2, df=DPs$n1-1, lower.tail = F)
+DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
+DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+(DPs$TE^2)/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+
+
+#   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    
+    ### gives error: Problems in multi-arm studies! Studies with negative treatment   arm variance: '18', '185'
+
+# assign other correlation value to study 18 and 185 based on other studies
+# DPs[,c("studlab","rho")]
+# DPs[DPs$studlab==18|DPs$studlab==185,"rho"] <- 0.9
+# DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+SQ<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, sm="SMD",r="nitrazepam",comb.fixed =F, comb.random = T)
+SQ
+
+
+SQ1<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = c(-grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1)), sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
+SQ1
+
+SQ2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =F, comb.random = T)
+SQ2
+```
+
+## Description of the network
+
+Below is a description for the network formed by studies examining the outcome Sleep Quality.
+
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included interventions:
+```{r, echo=FALSE}
+print(length(table(DATAs$Drug_name)))
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+print(length(table(DATAs$Final_ID_all)))
+```
+
+
+
+The plot below shows the available data
+
+<!-- ```{r, echo=FALSE} -->
+
+<!-- #network plot -->
+<!-- netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1) -->
+<!-- ``` -->

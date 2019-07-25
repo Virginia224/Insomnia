@@ -1,5 +1,5 @@
 ---
-title: "Insomnia NMA draft"
+title: "Insomnia NMA"
 subtitle: "Prepared by Virginia Chiocchia on 23rd July, refers to a single outcome analysis (Total Sleep Time) in a frequentist setting"
 output: 
   word_document: 
@@ -10,14 +10,14 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-Make sure you have the needed libraries from R-Cran and Github:
-devtools
-NMAJags
-R2jags
-netmeta
-meta
-metafor
-readxl
+<!-- Make sure you have the needed libraries from R-Cran and Github: -->
+<!-- devtools -->
+<!-- NMAJags -->
+<!-- R2jags -->
+<!-- netmeta -->
+<!-- meta -->
+<!-- metafor -->
+<!-- readxl -->
 
 
 ```{r, include=FALSE}
@@ -31,46 +31,23 @@ library(metafor)
 library(readxl)
 ```
 
-First read your data. Modify the path and data name in 
-DATA <- read_excel("~/_mydrive/Schizophrenia/Schizo.xlsx", na = "NA")
-to make sure it works for you. But I urge you to keep the name DATA
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #get the data and select them
-DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgi.xlsx", na = "NA")
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
 
 
 ```
 
-#Description of the network
-
-Below is a description for the network formed by studies examining the outcome Total Sleep Time.
-
-Below are the total number of participants in each of the included interventions
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-#describe the data
-tapply(DATA$N_arm_total_stapf,DATA$Drug_name,sum,na.rm=T)
-
-```
-Number of interventions:
-```{r, echo=FALSE}
-print(length(table(DATA$Drug_name)))
-```
-Number of studies:
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-print(length(table(DATA$Final_ID_all)))
-```
 
 
-The plot below shows the available data
 ```{r, include=FALSE}
 #prepare the data
 DATApairs=pairwise(treat=Drug_name,mean=SleepTimeTotalScaleMean,sd=SleepTimeTotalScaleSD,n=SleepTimeTotalScaleParticipants, data=DATA, studlab = Final_ID_all, sm= "SMD")
 #run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
 netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
 #remove rows for studies disconnected from main network
-DPs <- subset(DATApairs, treat2!="waitlist" & treat2!="artificial juice" & treat2!="sleep hygiene" & treat2!="oxazepam")
-DPs <- DPs[-grep("LAT",DPs$treat2),]
+DPs <- DATApairs[-grep("LAT|MAT|BBT I|midazolam|hygiene|juice",DATApairs$treat1),]
 #check p-value availability for paired t-test for crossover studies with both phases used
 DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","tst_PorF-value","tst_p=0, f=1")]
 # use threshold value for those with p-value <0.001
@@ -79,7 +56,7 @@ DPs[DPs$studlab==185, "tst_PorF-value"] <- 0.00099
 DPs$tvalue <- qt(as.numeric(DPs$`tst_PorF-value`)/2, df=DPs$n1-1, lower.tail = F)
 DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
 DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
-DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+(DPs$TE^2)/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
 
 
 #   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    
@@ -88,13 +65,34 @@ DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- 
 # assign other correlation value to study 18 and 185 based on other studies
 DPs[,c("studlab","rho")]
 DPs[DPs$studlab==18|DPs$studlab==185,"rho"] <- 0.9
-DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
-TST<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+(DPs$TE^2)/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+TST<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05)
 TST
 
 ```
+## Description of the network
 
 
+Below is a description for the network formed by studies examining the outcome Total Sleep Time.
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included interventions:
+```{r, echo=FALSE}
+TST$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+TST$k
+```
+
+
+
+The plot below shows the available data
 
 ```{r, echo=FALSE}
 
@@ -105,7 +103,7 @@ netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, 
 
 
 
-#Frequentist network meta-analysis 
+## Frequentist network meta-analysis 
 
 Below are the relative treatment effects from the NMA model. 
 
@@ -135,7 +133,7 @@ cat(paste("I2=",round(TST$I2),"%"))
 <!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
 
 <!-- ```{r echo=FALSE, message=FALSE, warning=FALSE} -->
-<!-- split=netsplit(EFF)  -->
+<!-- split=netsplit(TST) -->
 <!-- SIDEp=split$compare.random$p -->
 <!-- SIDEp=SIDEp[!is.na(SIDEp)] -->
 <!-- #proportion of inconsistent loops -->
@@ -157,12 +155,12 @@ cat(paste("I2=",round(TST$I2),"%"))
 <!-- The p-value from the design-by-treatment test is -->
 
 <!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
-<!-- a=decomp.design(EFF) -->
+<!-- a=decomp.design(TST) -->
 <!-- print(round(a$Q.inc.random$pval,3)) -->
 <!-- ``` -->
 
 
-#Sensitivity analyses and meta-regressions
+### Sensitivity analyses and meta-regressions
 
 We run a sensitivity analyses excluding the crossover studies
 ```{r, include=FALSE}
@@ -177,7 +175,7 @@ TSTsens
 
 ```{r, echo=FALSE}
 
-forest(TSTsens, ref="pbo",sortvar = -Pscore, smlab="Only head-to-head studies", fontsize=10)
+forest(TSTsens, ref="pbo",sortvar = -Pscore, smlab="Only parallel studies", fontsize=10)
 
 
 ```
