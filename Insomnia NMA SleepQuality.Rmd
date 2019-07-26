@@ -1,6 +1,6 @@
 ---
 title: "Insomnia NMA"
-subtitle: "Prepared by Virginia Chiocchia on 23rd July, refers to a single outcome analysis (Sleep Quality) in a frequentist setting"
+subtitle: "Prepared by Virginia Chiocchia on 26th July, refers to a single outcome analysis (Sleep Quality) in a frequentist setting"
 output: 
   word_document: 
     fig_height: 7
@@ -11,17 +11,14 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-Make sure you have the needed libraries from R-Cran and Github:
-devtools
-NMAJags
-R2jags
-netmeta
-meta
-metafor
-readxl
+<!-- Make sure you have the needed libraries from R-Cran and Github: -->
+<!-- devtools -->
+<!-- NMAJags -->
+<!-- R2jags -->
+<!-- netmeta -->
+<!-- meta -->
+<!-- metafor -->
+<!-- readxl -->
 
 
 ```{r, include=FALSE}
@@ -73,20 +70,52 @@ DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- 
 # DPs[,c("studlab","rho")]
 # DPs[DPs$studlab==18|DPs$studlab==185,"rho"] <- 0.9
 # DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
-SQ<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, sm="SMD",r="nitrazepam",comb.fixed =F, comb.random = T)
-SQ
+# SQ<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, sm="SMD",r="nitrazepam",comb.fixed =F, comb.random = T)
+# SQ    ### after romeving comparison with missing data network has 2 subnetworks
 
 
-SQ1<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = c(-grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1)), sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
+DPs1 <- DPs[-grep("chlormethiazole|triazolam|loprazolam|nitrazepam|zopiclone",DPs$treat2),]
+# SQ1<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs1, sm="SMD",r="pbo",comb.fixed =F, comb.random = T, details.chkmultiarm=TRUE)
+DPs1[,c("studlab","rho")]
+DPs1[DPs1$studlab==18,"rho"] <- 0.9
+DPs1[DPs1$Crossoverstudy==1 & DPs1$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs1$n1+(DPs1$TE^2)/(2*DPs1$n1))*(2-2*DPs1$rho))[DPs1$Crossoverstudy==1 & DPs1$`crossover, not first phase used`==1] 
+SQ1<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs1, sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
 SQ1
 
-SQ2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =F, comb.random = T)
-SQ2
 ```
 
 ## Description of the network
 
-Below is a description for the network formed by studies examining the outcome Sleep Quality.
+This network formed by studies examining the outcome Sleep Quality is composed by two sub-networks.
+The following treatments were excluded as they were disconnected to the two main sub-networks:
+
+* MAT
+* LAT
+* MAT+LAT
+* therapeutic touch
+* control/no intervention
+* mimic therapeutic touch
+* Mindfulness Based Stress Reduction Program
+* waitlist
+* sleep hygiene
+* lormetazepam + sleep hygiene
+* BBT I
+* self-monitoring control
+* auricular acupuncture
+* control?
+* acupressure
+* sham acupressure
+* artificial juice
+* tart cherry juice 
+
+
+### Sub-network 1
+
+Below is a description for the sub-network including the following interventions
+
+```{r, echo=FALSE}
+SQ1$trts
+```
 
 
 <!-- Below are the total number of participants in each of the included interventions -->
@@ -97,19 +126,156 @@ Below is a description for the network formed by studies examining the outcome S
 <!-- ``` -->
 Number of included interventions:
 ```{r, echo=FALSE}
-print(length(table(DATAs$Drug_name)))
+SQ1$n
 ```
 Number of included studies:
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-print(length(table(DATAs$Final_ID_all)))
+SQ1$k
 ```
 
 
 
 The plot below shows the available data
 
-<!-- ```{r, echo=FALSE} -->
+```{r, echo=FALSE}
 
-<!-- #network plot -->
-<!-- netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1) -->
+#network plot
+netgraph(SQ1, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
+```
+
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(SQ1, ref="pbo", sortvar = Pscore,xlab="SMD")
+```
+
+The P-scores (equivalent to the SUCRAs) are shown below
+```{r, echo=FALSE}
+netrank(SQ1)
+```
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(SQ1$tau,3)))
+```
+and I-square (total) is 
+```{r, echo=FALSE}
+cat(paste("I2=",round(SQ1$I2),"%"))
+```
+
+<!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
+
+<!-- ```{r echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- split=netsplit(SQ1) -->
+<!-- SIDEp=split$compare.random$p -->
+<!-- SIDEp=SIDEp[!is.na(SIDEp)] -->
+<!-- #proportion of inconsistent loops -->
+<!-- cat(length(SIDEp)) -->
 <!-- ``` -->
+
+<!-- comparisons in the network, and there is inconsistency (according to SIDE p-value<0.10) in -->
+
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(length(SIDEp[SIDEp<=0.1])) -->
+<!-- ``` -->
+<!-- loops which gives a % of inconsistent loops equal to -->
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(paste(round((length(SIDEp[SIDEp<=0.1])/length(SIDEp))*100,1),"%")) -->
+<!-- ``` -->
+
+
+
+<!-- The p-value from the design-by-treatment test is -->
+
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- a=decomp.design(SQ1) -->
+<!-- print(round(a$Q.inc.random$pval,3)) -->
+<!-- ``` -->
+
+
+
+
+```{r, include=FALSE}
+SQ2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =F, comb.random = T)
+SQ2
+```
+
+### Sub-network 2
+
+Below is a description for the sub-network including the following interventions
+
+```{r, echo=FALSE}
+SQ2$trts
+```
+
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included interventions:
+```{r, echo=FALSE}
+SQ2$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+SQ2$k
+```
+
+
+
+The plot below shows the available data
+
+```{r, echo=FALSE}
+
+#network plot
+netgraph(SQ2, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
+```
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(SQ2, ref="chlormethiazole", sortvar = Pscore,xlab="SMD")
+```
+
+The P-scores (equivalent to the SUCRAs) are shown below
+```{r, echo=FALSE}
+netrank(SQ2)
+```
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(SQ2$tau,3)))
+```
+and I-square (total) is 
+```{r, echo=FALSE}
+cat(paste("I2=",round(SQ1$I2),"%"))
+```
+
+
+### Sensitivity analyses and meta-regressions
+
+We run a sensitivity analyses on the first sub-network excluding the crossover studies.
+```{r, include=FALSE}
+
+#only non-crossover
+InsoSQsen=subset(DPs1,Crossoverstudy!=1 &`crossover, not first phase used`!=1)  ### can I just take a subset of the previous pairwise dataset? or do I need to do a subset of the original dataset and then do the pairwise again?
+SQ1sens<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoSQsen,  sm="SMD",comb.fixed =F, comb.random = T)
+SQ1sens
+
+
+```
+
+```{r, echo=FALSE}
+
+forest(SQ1sens, ref="pbo",sortvar = Pscore, smlab="Only parallel studies", fontsize=10)
+
+
+```

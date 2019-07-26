@@ -75,6 +75,7 @@ TST
 
 Below is a description for the network formed by studies examining the outcome Total Sleep Time.
 
+
 <!-- Below are the total number of participants in each of the included interventions -->
 <!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
 <!-- #describe the data -->
@@ -90,12 +91,25 @@ Number of included studies:
 TST$k
 ```
 
+The following treatments were excluded as they were disconnected to the two main sub-networks:
 
+  * MAT
+  * LAT
+  * MAT+LAT
+  * sleep hygiene
+  * lormetazepam + sleep hygiene
+  * BBT I
+  * self-monitoring control
+  * midazolam
+  * oxazepam
+  * artificial juice
+  * tart cherry juice  
+  
+\    
 
-The plot below shows the available data
-
+  
+ The plot below shows the available data\
 ```{r, echo=FALSE}
-
 #network plot
 netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
 ```
