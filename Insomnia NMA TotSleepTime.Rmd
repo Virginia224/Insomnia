@@ -1,6 +1,6 @@
 ---
 title: "Insomnia NMA"
-subtitle: "Prepared by Virginia Chiocchia on 23rd July, refers to a single outcome analysis (Total Sleep Time) in a frequentist setting"
+subtitle: "Prepared by Virginia Chiocchia on 28th July, refers to a single outcome analysis (Total Sleep Time) in a frequentist setting"
 output: 
   word_document: 
     fig_height: 7
@@ -111,7 +111,7 @@ The following treatments were excluded as they were disconnected to the two main
  The plot below shows the available data\
 ```{r, echo=FALSE}
 #network plot
-netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
+netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 
@@ -128,10 +128,10 @@ forest(TST, ref="pbo", sortvar = -Pscore,xlab="SMD")
 ```
 
 
-The P-scores (equivalent to the SUCRAs) are shown below
-```{r, echo=FALSE}
-netrank(TST, small.values = "bad")
-```
+<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
+<!-- ```{r, echo=FALSE} -->
+<!-- netrank(TST, small.values = "bad") -->
+<!-- ``` -->
 
 The heterogeneity standard deviation is estimated at
 ```{r, echo=FALSE}
@@ -139,7 +139,7 @@ cat(paste("tau=",round(TST$tau,3)))
 ```
 and I-square (total) is 
 ```{r, echo=FALSE}
-cat(paste("I2=",round(TST$I2),"%"))
+cat(paste("I2=",round(TST$I2, digits = 2)*100,"%"))
 ```
 
 
@@ -185,6 +185,11 @@ TSTsens<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoTSTsen,  sm="SMD",comb.f
 TSTsens
 
 
+```
+
+```{r, echo=FALSE}
+#network plot
+netgraph(TSTsens, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 ```{r, echo=FALSE}

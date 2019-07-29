@@ -1,6 +1,6 @@
 ---
 title: "Insomnia NMA"
-subtitle: "Prepared by Virginia Chiocchia on 26th July, refers to a single outcome analysis (Sleep Quality) in a frequentist setting"
+subtitle: "Prepared by Virginia Chiocchia on 28th July, refers to a single outcome analysis (Sleep Quality) in a frequentist setting"
 output: 
   word_document: 
     fig_height: 7
@@ -140,7 +140,7 @@ The plot below shows the available data
 ```{r, echo=FALSE}
 
 #network plot
-netgraph(SQ1, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
+netgraph(SQ1, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 
@@ -152,10 +152,10 @@ Below are the relative treatment effects from the NMA model.
 forest(SQ1, ref="pbo", sortvar = Pscore,xlab="SMD")
 ```
 
-The P-scores (equivalent to the SUCRAs) are shown below
-```{r, echo=FALSE}
-netrank(SQ1)
-```
+<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
+<!-- ```{r, echo=FALSE} -->
+<!-- netrank(SQ1) -->
+<!-- ``` -->
 
 The heterogeneity standard deviation is estimated at
 ```{r, echo=FALSE}
@@ -163,7 +163,7 @@ cat(paste("tau=",round(SQ1$tau,3)))
 ```
 and I-square (total) is 
 ```{r, echo=FALSE}
-cat(paste("I2=",round(SQ1$I2),"%"))
+cat(paste("I2=",round(SQ1$I2, digits = 2)*100,"%"))
 ```
 
 <!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
@@ -199,7 +199,7 @@ cat(paste("I2=",round(SQ1$I2),"%"))
 
 
 ```{r, include=FALSE}
-SQ2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =F, comb.random = T)
+SQ2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =T, comb.random = F)
 SQ2
 ```
 
@@ -245,19 +245,19 @@ Below are the relative treatment effects from the NMA model.
 forest(SQ2, ref="chlormethiazole", sortvar = Pscore,xlab="SMD")
 ```
 
-The P-scores (equivalent to the SUCRAs) are shown below
-```{r, echo=FALSE}
-netrank(SQ2)
-```
+<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
+<!-- ```{r, echo=FALSE} -->
+<!-- netrank(SQ2) -->
+<!-- ``` -->
 
-The heterogeneity standard deviation is estimated at
-```{r, echo=FALSE}
-cat(paste("tau=",round(SQ2$tau,3)))
-```
-and I-square (total) is 
-```{r, echo=FALSE}
-cat(paste("I2=",round(SQ1$I2),"%"))
-```
+<!-- The heterogeneity standard deviation is estimated at -->
+<!-- ```{r, echo=FALSE} -->
+<!-- cat(paste("tau=",round(SQ2$tau,3))) -->
+<!-- ``` -->
+<!-- and I-square (total) is  -->
+<!-- ```{r, echo=FALSE} -->
+<!-- cat(paste("I2=",round(SQ1$I2),"%")) -->
+<!-- ``` -->
 
 
 ### Sensitivity analyses and meta-regressions
@@ -271,6 +271,12 @@ SQ1sens<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoSQsen,  sm="SMD",comb.fi
 SQ1sens
 
 
+```
+
+```{r, echo=FALSE}
+
+#network plot
+netgraph(SQ1sens, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 ```{r, echo=FALSE}
