@@ -1,0 +1,281 @@
+---
+title: "Insomnia pairwise MAs"
+subtitle: "Prepared by Virginia Chiocchia on 30th July, refers to a single outcome analysis (Sleep Quality) in a frequentist setting"
+
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 8, fig.height = 3)
+```
+
+```{r, include=FALSE}
+library(devtools)
+install_github("esm-ispm-unibe-ch/NMAJags")
+library(NMAJags)
+library(R2jags)
+library(netmeta)
+library(meta)
+library(metafor)
+library(readxl)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#get the data and select them
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
+
+
+```
+
+```{r, include=FALSE}
+#prepare the data
+DATApairs=pairwise(treat=Drug_name,mean=SleepQualityScaleMean,sd=SleepQualityScaleSD,n=SleepQualityScaleParticipants, data=DATA, studlab = Final_ID_all, sm= "SMD")
+#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
+netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+
+#check p-value availability for paired t-test for crossover studies with both phases used
+DATApairs[DATApairs$Crossoverstudy==1 & DATApairs$`crossover, not first phase used`==1,c("studlab","squal_PorF-value","squal_p=0, f=1")]
+# use threshold value for those with p-value <0.025
+DATApairs[DATApairs$studlab==17, "squal_PorF-value"] <- 0.02499
+
+# now calculate adjusted SE for remaining crossover studies
+DATApairs$tvalue <- qt(as.numeric(DATApairs$`squal_PorF-value`)/2, df=DATApairs$n1-1, lower.tail = F)
+DATApairs$SDd <- abs((DATApairs$mean2-DATApairs$mean1)/DATApairs$tvalue*sqrt(DATApairs$n1))
+DATApairs$rho <- (DATApairs$sd1^2 + DATApairs$sd2^2 - DATApairs$SDd^2)/(2*DATApairs$sd1*DATApairs$sd2)
+DATApairs[DATApairs$Crossoverstudy==1 & DATApairs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DATApairs$n1+(DATApairs$TE^2)/(2*DATApairs$n1))*(2-2*DATApairs$rho))[DATApairs$Crossoverstudy==1 & DATApairs$`crossover, not first phase used`==1] 
+```
+
+
+
+
+```{r, echo=FALSE}
+# acetaminophen vs placebo
+SQma1 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="acetaminophen", label.e = DATApairs$treat1[1], label.c = DATApairs$treat2[1])
+
+#forest plots
+forest(SQma1, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# srtifical vs tart cherry juice
+SQma2 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="artificial juice", label.e = "artificial juice", label.c = "tart cherry juice")
+
+#forest plots
+forest(SQma2, digits=1, digits.sd = 1)
+```
+
+```{r, echo=FALSE}
+# BBT I vs self-monitoring control
+SQma3 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="BBT I", label.e = "BBT I", label.c = "self-monitoring control")
+
+#forest plots
+forest(SQma3, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# chlormethiazole vs triazolam
+SQma4 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="chlormethiazole", label.e ="chlormethiazole", label.c = "triazolam")
+
+#forest plots
+forest(SQma4, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# diphenhydramine vs pbo
+SQma5 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="diphenhydramine" &  DATApairs$treat2=="pbo", label.e = "diphenhydramine", label.c = "pbo")
+
+#forest plots
+forest(SQma5, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# diphenhydramine vs temazepam
+SQma6 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="diphenhydramine" &  DATApairs$treat2=="temazepam", label.e = "diphenhydramine", label.c = "temazepam")
+
+#forest plots
+forest(SQma6, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE, fig.width = 10, fig.height = 3}
+# doxepin vs pbo
+SQma7 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="doxepin", label.e = "doxepin", label.c = "pbo")
+
+#forest plots
+forest(SQma7, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# esmirtazapine vs pbo
+SQma8 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="esmirtazapine", label.e = "esmirtazapine", label.c = "pbo")
+
+#forest plots
+forest(SQma8, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE, fig.width = 10, fig.height = 3}
+# eszopiclone vs pbo
+SQma9 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="eszopiclone", label.e = "eszopiclone", label.c = "pbo")
+
+#forest plots
+forest(SQma9, digits=1, digits.sd = 1, just = "center")
+```
+
+
+```{r, echo=FALSE}
+# food supplement vs pbo
+SQma10 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = grep("food supplement", DATApairs$treat1), label.e = "food supplement", label.c = "pbo")
+
+#forest plots
+forest(SQma10, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# LAT vs MAT
+SQma11 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="LAT" &  DATApairs$treat2=="MAT", label.e = "LAT", label.c = "MAT")
+
+#forest plots
+forest(SQma11, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# LAT vs MAT+LAT
+SQma12 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="LAT" &  DATApairs$treat2=="MAT+LAT", label.e = "LAT", label.c = "MAT+LAT")
+
+#forest plots
+forest(SQma12, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# MAT vs MAT+LAT
+SQma13 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="MAT" &  DATApairs$treat2=="MAT+LAT", label.e = "MAT", label.c = "MAT+LAT")
+
+#forest plots
+forest(SQma13, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+# loprazolam vs nitrazepam
+SQma14 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="loprazolam" &  DATApairs$treat2=="nitrazepam", label.e = "loprazolam", label.c = "nitrazepam")
+
+#forest plots
+forest(SQma14, digits=1, digits.sd = 1)
+```
+
+<!-- ```{r, echo=FALSE} -->
+<!-- # lormetazepam+sleep hygiene vs sleep hygiene -->
+<!-- SQma15 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat2=="sleep hygiene", label.e = "lormetazepam + sleep hygiene", label.c = "sleep hygiene") -->
+
+<!-- #forest plots -->
+<!-- forest(SQma15, digits=1, digits.sd = 1) -->
+<!-- ``` -->
+
+```{r, echo=FALSE, fig.width = 10, fig.height = 3}
+#  melatonin vs pbo
+SQma15 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="melatonin", label.e = "melatonin", label.c = "pbo")
+
+#forest plots
+forest(SQma15, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE, fig.width = 10, fig.height = 3}
+#  Mindfulness Based Stress Reduction Program vs waitlist
+SQma16 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="Mindfulness Based Stress Reduction Program", label.e = "Mindfulness Based Stress Reduction Program", label.c = "waitlist")
+
+#forest plots
+forest(SQma16, digits=1, digits.sd = 1)
+```
+
+```{r, echo=FALSE, fig.width =10, fig.height = 3}
+#  nitrazepam vs triazolam
+SQma17 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="nitrazepam" & DATApairs$treat2=="triazolam", label.e = "nitrazepam", label.c = "triazolam")
+
+#forest plots
+forest(SQma17, digits=1, digits.sd = 1)
+```
+```{r, echo=FALSE}
+#  nitrazepam vs zopiclone
+SQma18 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="nitrazepam" & DATApairs$treat2=="zopiclone", label.e = "nitrazepam", label.c = "zopiclone")
+
+#forest plots
+forest(SQma18, digits=1, digits.sd = 1)
+```
+
+<!-- ```{r, echo=FALSE} -->
+<!-- #  pbo vs temazepam -->
+<!-- SQma19 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="pbo" & DATApairs$treat2=="triazolam", label.e = "pbo", label.c = "triazolam") -->
+
+<!-- #forest plots -->
+<!-- forest(SQma19, digits=1, digits.sd = 1, just = "center") -->
+<!-- ``` -->
+
+
+```{r, echo=FALSE}
+#  pbo vs temazepam
+SQma20 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="pbo" & DATApairs$treat2=="temazepam", label.e = "pbo", label.c = "temazepam")
+
+#forest plots
+forest(SQma20, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+#  pbo vs zaleplon
+SQma21 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="pbo" & DATApairs$treat2=="zaleplon", label.e = "pbo", label.c = "zaleplon")
+
+#forest plots
+forest(SQma21, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+#  pbo vs propiomazine
+SQma22 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="pbo" & DATApairs$treat2=="propiomazine", label.e = "pbo", label.c = "propiomazine")
+
+#forest plots
+forest(SQma22, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+#  pbo vs zolpidem
+SQma23 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="pbo" & DATApairs$treat2=="zolpidem", label.e = "pbo", label.c = "zolpidem")
+
+#forest plots
+forest(SQma23, digits=1, digits.sd = 1, just = "center")
+```
+```{r, echo=FALSE, fig.width = 10, fig.height = 3}
+#  acupressure vs sham acupressure
+SQma24 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="acupressure", label.e = "acupressure", label.c = "sham acupressure")
+
+#forest plots
+forest(SQma24, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+#  auricular acupuncture vs control?
+SQma25 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="auricular acupuncture", label.e = "auricular acupuncture", label.c = "control")
+
+#forest plots
+forest(SQma25, digits=1, digits.sd = 1, just = "center")
+```
+
+```{r, echo=FALSE}
+#  mimic therapeutic touch vs no intervention
+SQma26 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = grep("mimic therapeutic", DATApairs$treat2), label.e = "no intervention", label.c = "mimic therapeutic touch")
+
+#forest plots
+forest(SQma26, digits=1, digits.sd = 1, just = "left")
+```
+
+```{r, echo=FALSE}
+#  therapeutic touch vs no intervention
+SQma27 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="control/no intervention" & DATApairs$treat2=="therapeutic touch", label.e = "no intervention", label.c = "therapeutic touch")
+
+#forest plots
+forest(SQma27, digits=1, digits.sd = 1, just = "left")
+```
+
+```{r, echo=FALSE}
+#  mimic therapeutic touch vs therapeutic touch 
+SQma28 <- metacont(n1,mean1,sd1,n2,mean2,sd2, studlab=DATApairs$Study_name, data=DATApairs, subset = DATApairs$treat1=="mimic therapeutic touch/placebo" & DATApairs$treat2=="therapeutic touch", label.e = "mimic touch", label.c = "therapeutic touch")
+
+#forest plots
+forest(SQma28, digits=1, digits.sd = 1, just = "center")
+```
