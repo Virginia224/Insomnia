@@ -1,6 +1,6 @@
 ---
 title: "Insomnia NMA"
-subtitle: "Prepared by Virginia Chiocchia on 28th July, refers to a single outcome analysis (Total Sleep Time) in a frequentist setting"
+subtitle: "Prepared by Virginia Chiocchia on 7th August, refers to a single outcome analysis (Sleep Onset Latency) in a frequentist setting"
 output: 
   word_document: 
     fig_height: 7
@@ -10,6 +10,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
 <!-- Make sure you have the needed libraries from R-Cran and Github: -->
 <!-- devtools -->
 <!-- NMAJags -->
@@ -18,8 +19,6 @@ knitr::opts_chunk$set(echo = TRUE)
 <!-- meta -->
 <!-- metafor -->
 <!-- readxl -->
-
-
 ```{r, include=FALSE}
 library(devtools)
 install_github("esm-ispm-unibe-ch/NMAJags")
@@ -31,7 +30,6 @@ library(metafor)
 library(readxl)
 ```
 
-
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #get the data and select them
 DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
@@ -39,71 +37,73 @@ DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesCle
 
 ```
 
-
-
 ```{r, include=FALSE}
-#prepare the data
-DATApairs=pairwise(treat=Drug_name,mean=SleepTimeTotalScaleMean,sd=SleepTimeTotalScaleSD,n=SleepTimeTotalScaleParticipants, data=DATA, studlab = Final_ID_all, sm= "SMD")
-#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
+# prepare the data
+DATApairs=pairwise(treat=Drug_name, mean=SleepOnsetLatencyScaleMean, sd=SleepOnsetLatencyScaleSD, n=SleepOnsetLatencyScaleParticipants, data=DATA, studlab = Study_name, sm= "MD")
+
+# run netconnection first to check for potential sub-networks
 netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+
 #remove rows for studies disconnected from main network
-DPs <- DATApairs[-grep("LAT|MAT|BBT I|midazolam|hygiene|juice",DATApairs$treat1),]
+DPs <- DATApairs[-grep("LAT|MAT|BBT I|flunitrazepam|juice",DATApairs$treat1),]
 # remove studies with "special patients" that should not be included in main analysis
-DPs <- DPs[DPs$Included==1,]
+# DPs <- DPs[DPs$Included==1,]
+
 #check p-value availability for paired t-test for crossover studies with both phases used
-DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","tst_PorF-value","tst_p=0, f=1")]
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("Study_name","treat1","treat2","sol_PorF-value1","sol_PorF-value2","sol_p=0, f=1")]
 # use threshold value for those with p-value <0.001
-DPs[DPs$studlab==185, "tst_PorF-value"] <- 0.00099
+DPs[DPs$studlab=="Vinkari 1984", "sol_PorF-value1"] <- 0.00099
+# remove studies wit no p-value
+DPs <- DPs[DPs$studlab!="Baskett 2003" & DPs$studlab!="Haimov 1995",]
+
 #now calculate adjusted SE for remaining crossover studies
-DPs$tvalue <- qt(as.numeric(DPs$`tst_PorF-value`)/2, df=DPs$n1-1, lower.tail = F)
-DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
-DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
-DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+(DPs$TE^2)/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+DPs$tvalue <- qt(as.numeric(DPs$`sol_PorF-value1`)/2, df=DPs$n1-1, lower.tail = F)
+#DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
+#DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- (abs(DPs$TE)/DPs$tvalue)[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
 
 
 #   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    
     ### gives error: Problems in multi-arm studies! Studies with negative treatment   arm variance: '18', '185'
 
-# assign other correlation value to study 18 and 185 based on other studies
-DPs[,c("studlab","rho")]
-DPs[DPs$studlab==18|DPs$studlab==185,"rho"] <- 0.9
-DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+(DPs$TE^2)/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
-TST<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="MD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05)
-TST
+# assign correlation value to study 18 and 185 based on other studies to fix issues with negative variances
+DPs$rho <- 0.9
+DPs$SDd <- sqrt(DPs$sd1^2 + DPs$sd2^2 - 2*DPs$rho*DPs$sd1*DPs$sd2)
+DPs[DPs$studlab=="Glass 2008" | DPs$studlab=="Vinkari 1984","seTE"] <- (DPs$SDd/sqrt(DPs$n1))[DPs$studlab=="Glass 2008" | DPs$studlab=="Vinkari 1984"]
+
+# check there is no NA is the data
+DPs[is.na(DPs$TE) | is.na(DPs$seTE),c("studlab","treat1","treat2","TE","seTE")]
+DPs <- subset(DPs, studlab!="Glind 2014" & studlab!="Ancoli-Israel 1999" )
+
+
+SOL<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="MD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.5)
+SOL
 
 ```
+
 ## Description of the network
 
 
-Below is a description for the network formed by studies examining the outcome Total Sleep Time.
+Below is a description for the network formed by studies examining the outcome Sleep Onset Latency.
 
-
-<!-- Below are the total number of participants in each of the included interventions -->
-<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
-<!-- #describe the data -->
-<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
-
-<!-- ``` -->
 Number of included interventions:
 ```{r, echo=FALSE}
-TST$n
+SOL$n
 ```
 Number of included studies:
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-TST$k
+SOL$k
 ```
 
-The following treatments were excluded as they were disconnected to the two main sub-networks:
+The following treatments were excluded as they were disconnected to the main network:
 
   * MAT
   * LAT
   * MAT+LAT
-  * sleep hygiene
-  * lormetazepam + sleep hygiene
   * BBT I
   * self-monitoring control
-  * midazolam
-  * oxazepam
+  * flunitrazepam
+  * nitrazepam
   * artificial juice
   * tart cherry juice  
   
@@ -113,7 +113,7 @@ The following treatments were excluded as they were disconnected to the two main
  The plot below shows the available data\
 ```{r, echo=FALSE}
 #network plot
-netgraph(TST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+netgraph(SOL, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 
@@ -126,30 +126,22 @@ Below are the relative treatment effects from the NMA model.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
 #forest plots
-forest(TST, ref="pbo", sortvar = -Pscore,xlab="MD")
+forest(SOL, ref="pbo", sortvar = -Pscore,xlab="MD")
 ```
-
-
-<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
-<!-- ```{r, echo=FALSE} -->
-<!-- netrank(TST, small.values = "bad") -->
-<!-- ``` -->
 
 The heterogeneity standard deviation is estimated at
 ```{r, echo=FALSE}
-cat(paste("tau=",round(TST$tau,3)))
+cat(paste("tau=",round(SOL$tau,3)))
 ```
 and I-square (total) is 
 ```{r, echo=FALSE}
-cat(paste("I2=",round(TST$I2, digits = 2)*100,"%"))
+cat(paste("I2=",round(SOL$I2, digits = 2)*100,"%"))
 ```
-
-
 
 <!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
 
 <!-- ```{r echo=FALSE, message=FALSE, warning=FALSE} -->
-<!-- split=netsplit(TST) -->
+<!-- split=netsplit(SOL) -->
 <!-- SIDEp=split$compare.random$p -->
 <!-- SIDEp=SIDEp[!is.na(SIDEp)] -->
 <!-- #proportion of inconsistent loops -->
@@ -171,7 +163,7 @@ cat(paste("I2=",round(TST$I2, digits = 2)*100,"%"))
 <!-- The p-value from the design-by-treatment test is -->
 
 <!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
-<!-- a=decomp.design(TST) -->
+<!-- a=decomp.design(SOL) -->
 <!-- print(round(a$Q.inc.random$pval,3)) -->
 <!-- ``` -->
 
@@ -182,21 +174,27 @@ We run a sensitivity analyses excluding the crossover studies
 ```{r, include=FALSE}
 
 #only non-crossover
-InsoTSTsen=subset(DPs,Crossoverstudy!=1 &`crossover, not first phase used`!=1)  ### can I just take a subset of the previous pairwise dataset? or do I need to do a subset of the original dataset and then do the pairwise again?
-TSTsens<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoTSTsen,  sm="MD",comb.fixed =F, comb.random = T)
-TSTsens
+InsoSOLsen=subset(DPs,Crossoverstudy==0 | Crossoverstudy==1 & `crossover, not first phase used`!=1)  
+netconnection(treat1,treat2,studlab,data=InsoSOLsen,warn = T)
+# not connected so remove study 161 (chlormethiazole vs temazepam)
+InsoSOLsen <- subset(InsoSOLsen, treat1!="chlormethiazole")
+
+SOLsens<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoSOLsen,  sm="MD",comb.fixed =F, comb.random = T)
+SOLsens
 
 
 ```
 
 ```{r, echo=FALSE}
 #network plot
-netgraph(TSTsens, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+netgraph(SOLsens, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
+
+One study, comparing chlormethiazole versus temazepam, was also excluded from this sensitivity analysis because disconnected to the rest of the network
 
 ```{r, echo=FALSE}
 
-forest(TSTsens, ref="pbo",sortvar = -Pscore, smlab="Only parallel studies", fontsize=10,xlab="MD")
+forest(SOLsens, ref="pbo",sortvar = -Pscore, smlab="Only parallel studies", fontsize=10,xlab="MD")
 
 
 ```

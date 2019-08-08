@@ -1,0 +1,151 @@
+---
+title: "Insomnia NMA"
+subtitle: "Prepared by Virginia Chiocchia on 7th August, refers to a single outcome analysis (Total sleep time by polysomnography) in a frequentist setting"
+output: 
+  word_document: 
+    fig_height: 7
+    fig_width: 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Make sure you have the needed libraries from R-Cran and Github: -->
+<!-- devtools -->
+<!-- NMAJags -->
+<!-- R2jags -->
+<!-- netmeta -->
+<!-- meta -->
+<!-- metafor -->
+<!-- readxl -->
+```{r, include=FALSE}
+library(devtools)
+install_github("esm-ispm-unibe-ch/NMAJags")
+library(NMAJags)
+library(R2jags)
+library(netmeta)
+library(meta)
+library(metafor)
+library(readxl)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#get the data and select them
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
+
+
+```
+
+```{r, include=FALSE}
+# prepare the data
+DATApairs=pairwise(treat=Drug_name, mean=PolySomnographyScaleMean, sd=PolySomnographyScaleSD, n=PolySomnographyScaleParticipants, data=DATA, studlab = Study_name, sm= "MD")
+
+# run netconnection first to check for potential sub-networks
+netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+
+#remove rows for studies disconnected from main network
+DPs <- DATApairs[-grep("LAT|MAT|BBT I",DATApairs$treat1),]
+# remove studies with "special patients" that should not be included in main analysis
+# DPs <- DPs[DPs$Included==1,]
+
+#check p-value availability for paired t-test for crossover studies with both phases used
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("Study_name","treat1","treat2")]
+
+# no p-value available for this outcome so remove crossover study
+DPs <- DPs[DPs$studlab!="Garfinkel 1995",]
+
+
+# check there is no NA is the data
+DPs[is.na(DPs$TE) | is.na(DPs$seTE),c("studlab","treat1","treat2","TE","seTE")]
+
+
+polyTST<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="MD",r="pbo",comb.fixed =F, comb.random = T)
+polyTST
+
+```
+
+## Description of the network
+
+
+Below is a description for the network formed by studies examining the outcome Total sleep time by polysomnography.
+
+Number of included interventions:
+```{r, echo=FALSE}
+polyTST$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+polyTST$k
+```
+
+The following treatments were excluded as they were disconnected to the main network:
+
+  * MAT
+  * LAT
+  * MAT+LAT
+  * BBT I
+  * self-monitoring control
+  
+The crossover study Garfinkel 1995 was also excluded because no p-value was available for this outcome.
+  
+\    
+
+  
+ The plot below shows the available data\
+```{r, echo=FALSE}
+#network plot
+netgraph(polyTST, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+```
+
+
+
+
+## Frequentist network meta-analysis 
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(polyTST, ref="pbo", sortvar = Pscore,xlab="MD")
+```
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(polyTST$tau,3)))
+```
+and I-square (total) is 
+```{r, echo=FALSE}
+cat(paste("I2=",round(polyTST$I2, digits = 2)*100,"%"))
+```
+
+<!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
+
+<!-- ```{r echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- split=netsplit(SOL) -->
+<!-- SIDEp=split$compare.random$p -->
+<!-- SIDEp=SIDEp[!is.na(SIDEp)] -->
+<!-- #proportion of inconsistent loops -->
+<!-- cat(length(SIDEp)) -->
+<!-- ``` -->
+
+<!-- comparisons in the network, and there is inconsistency (according to SIDE p-value<0.10) in -->
+
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(length(SIDEp[SIDEp<=0.1])) -->
+<!-- ``` -->
+<!-- loops which gives a % of inconsistent loops equal to -->
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(paste(round((length(SIDEp[SIDEp<=0.1])/length(SIDEp))*100,1),"%")) -->
+<!-- ``` -->
+
+
+
+<!-- The p-value from the design-by-treatment test is -->
+
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- a=decomp.design(SOL) -->
+<!-- print(round(a$Q.inc.random$pval,3)) -->
+<!-- ``` -->
+

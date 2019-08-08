@@ -1,0 +1,229 @@
+---
+title: "Insomnia NMA"
+subtitle: "Prepared by Virginia Chiocchia on 7th August, refers to a single outcome analysis (Daytime impairment) in a frequentist setting"
+output: 
+  word_document: 
+    fig_height: 7
+    fig_width: 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Make sure you have the needed libraries from R-Cran and Github: -->
+<!-- devtools -->
+<!-- NMAJags -->
+<!-- R2jags -->
+<!-- netmeta -->
+<!-- meta -->
+<!-- metafor -->
+<!-- readxl -->
+```{r, include=FALSE}
+library(devtools)
+install_github("esm-ispm-unibe-ch/NMAJags")
+library(NMAJags)
+library(R2jags)
+library(netmeta)
+library(meta)
+library(metafor)
+library(readxl)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#get the data and select them
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
+
+
+```
+
+```{r, include=FALSE}
+# prepare the data
+DATApairs=pairwise(treat=Drug_name, mean=DayTimeSleepinessScaleMean, sd=DayTimeSleepinessScaleSD, n=DayTimeSleepinessScaleParticipants, data=DATA, studlab = Study_name, sm= "SMD")
+
+# run netconnection first to check for potential sub-networks
+netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+
+#remove rows for studies disconnected from main network
+DPs <- DATApairs[-grep("hygiene|Mindfulness|juice",DATApairs$treat1),]
+
+# remove studies with "special patients" that should not be included in main analysis
+DPs <- DPs[DPs$Included==1,]
+
+#check p-value availability for paired t-test for crossover studies with both phases used
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","Day_PorF-value","Day_p=0, f=1")]
+# remove studies wit no p-value
+DPs <- DPs[DPs$studlab!="Vinkari 1984",]
+# only crossover study for this outcome so no adjustment and no need for sensitivity
+
+
+# check there is no NA is the data
+DPs[is.na(DPs$TE) | is.na(DPs$seTE),c("studlab","treat1","treat2","TE","seTE")]
+DPs <- subset(DPs, studlab!="McCall 2006")
+
+
+# check connection again to divide two sub-networks
+netconnection(treat1,treat2,studlab,data=DPs,warn = T)
+
+
+DPs1 <- DPs[-grep("chlormethiazole|triazolam|loprazolam|nitrazepam|zopiclone",DPs$treat2),]
+DI1<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs1, sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
+DI1
+
+
+```
+
+## Description of the network
+
+
+This network formed by studies examining the outcome Daytime impairment is composed by two sub-networks.
+The following treatments were excluded as they were disconnected to the two main sub-networks:
+
+* Mindfulness Based Stress Reduction Program
+* waitlist
+* sleep hygiene
+* lormetazepam + sleep hygiene
+* artificial juice
+* tart cherry juice 
+
+The only crossover study for this outcome (Vinkari 1984) was excluded as it had no available p-value needed to calculate the adjusted standard error.
+
+### Sub-network 1
+
+Below is a description for the sub-network including the following interventions
+
+```{r, echo=FALSE}
+DI1$trts
+```
+
+
+Number of included interventions:
+```{r, echo=FALSE}
+DI1$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+DI1$k
+```
+\    
+
+  
+ The plot below shows the available data\
+```{r, echo=FALSE}
+#network plot
+netgraph(DI1, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+```
+
+
+
+
+## Frequentist network meta-analysis 
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(DI1, ref="pbo", sortvar = -Pscore,xlab="MD")
+```
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(DI1$tau,3)))
+```
+and I-square (total) is 
+```{r, echo=FALSE}
+cat(paste("I2=",round(DI1$I2, digits = 2)*100,"%"))
+```
+
+<!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
+
+<!-- ```{r echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- split=netsplit(SOL) -->
+<!-- SIDEp=split$compare.random$p -->
+<!-- SIDEp=SIDEp[!is.na(SIDEp)] -->
+<!-- #proportion of inconsistent loops -->
+<!-- cat(length(SIDEp)) -->
+<!-- ``` -->
+
+<!-- comparisons in the network, and there is inconsistency (according to SIDE p-value<0.10) in -->
+
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(length(SIDEp[SIDEp<=0.1])) -->
+<!-- ``` -->
+<!-- loops which gives a % of inconsistent loops equal to -->
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(paste(round((length(SIDEp[SIDEp<=0.1])/length(SIDEp))*100,1),"%")) -->
+<!-- ``` -->
+
+
+
+<!-- The p-value from the design-by-treatment test is -->
+
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- a=decomp.design(SOL) -->
+<!-- print(round(a$Q.inc.random$pval,3)) -->
+<!-- ``` -->
+
+
+```{r, include=FALSE}
+DI2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =T, comb.random = F)
+DI2
+```
+
+### Sub-network 2
+
+Below is a description for the sub-network including the following interventions
+
+```{r, echo=FALSE}
+DI2$trts
+```
+
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included interventions:
+```{r, echo=FALSE}
+DI2$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+DI2$k
+```
+
+
+
+The plot below shows the available data
+
+```{r, echo=FALSE}
+
+#network plot
+netgraph(DI2, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
+```
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(DI2, ref="chlormethiazole", sortvar = -Pscore,xlab="SMD")
+```
+
+<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
+<!-- ```{r, echo=FALSE} -->
+<!-- netrank(SQ2) -->
+<!-- ``` -->
+
+<!-- The heterogeneity standard deviation is estimated at -->
+<!-- ```{r, echo=FALSE} -->
+<!-- cat(paste("tau=",round(SQ2$tau,3))) -->
+<!-- ``` -->
+<!-- and I-square (total) is  -->
+<!-- ```{r, echo=FALSE} -->
+<!-- cat(paste("I2=",round(SQ1$I2),"%")) -->
+<!-- ``` -->
+
