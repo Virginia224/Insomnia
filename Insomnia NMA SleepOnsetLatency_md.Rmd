@@ -41,20 +41,16 @@ DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesCle
 # prepare the data
 DATApairs=pairwise(treat=Drug_name, mean=SleepOnsetLatencyScaleMean, sd=SleepOnsetLatencyScaleSD, n=SleepOnsetLatencyScaleParticipants, data=DATA, studlab = Study_name, sm= "MD")
 
-# run netconnection first to check for potential sub-networks
-netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+# check there is no NA is the data
+DPs <- DATApairs[!is.na(DATApairs$TE) & !is.na(DATApairs$seTE),]
 
-#remove rows for studies disconnected from main network
-DPs <- DATApairs[-grep("LAT|MAT|BBT I|flunitrazepam|juice",DATApairs$treat1),]
-# remove studies with "special patients" that should not be included in main analysis
-# DPs <- DPs[DPs$Included==1,]
 
 #check p-value availability for paired t-test for crossover studies with both phases used
 DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("Study_name","treat1","treat2","sol_PorF-value1","sol_PorF-value2","sol_p=0, f=1")]
 # use threshold value for those with p-value <0.001
 DPs[DPs$studlab=="Vinkari 1984", "sol_PorF-value1"] <- 0.00099
 # remove studies wit no p-value
-DPs <- DPs[DPs$studlab!="Baskett 2003" & DPs$studlab!="Haimov 1995",]
+DPs <- DPs[DPs$studlab!="Haimov 1995",]
 
 #now calculate adjusted SE for remaining crossover studies
 DPs$tvalue <- qt(as.numeric(DPs$`sol_PorF-value1`)/2, df=DPs$n1-1, lower.tail = F)
@@ -62,18 +58,23 @@ DPs$tvalue <- qt(as.numeric(DPs$`sol_PorF-value1`)/2, df=DPs$n1-1, lower.tail = 
 #DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
 DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- (abs(DPs$TE)/DPs$tvalue)[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
 
-
-#   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    
-    ### gives error: Problems in multi-arm studies! Studies with negative treatment   arm variance: '18', '185'
-
 # assign correlation value to study 18 and 185 based on other studies to fix issues with negative variances
 DPs$rho <- 0.9
 DPs$SDd <- sqrt(DPs$sd1^2 + DPs$sd2^2 - 2*DPs$rho*DPs$sd1*DPs$sd2)
 DPs[DPs$studlab=="Glass 2008" | DPs$studlab=="Vinkari 1984","seTE"] <- (DPs$SDd/sqrt(DPs$n1))[DPs$studlab=="Glass 2008" | DPs$studlab=="Vinkari 1984"]
 
-# check there is no NA is the data
-DPs[is.na(DPs$TE) | is.na(DPs$seTE),c("studlab","treat1","treat2","TE","seTE")]
-DPs <- subset(DPs, studlab!="Glind 2014" & studlab!="Ancoli-Israel 1999" )
+
+# save adjusted pairwise dataset for MAs
+write.csv(DPs, file = "~/Virginia/NMA insomnia/SleepOnsetLatency_pairwise.csv")
+
+
+# run netconnection first to check for potential sub-networks
+netconnection(treat1,treat2,studlab,data=DPs,warn = T)
+
+#remove rows for studies disconnected from main network
+DPs <- DPs[-grep("LAT|MAT|BBT I|flunitrazepam|juice",DPs$treat1),]
+# remove studies with "special patients" that should not be included in main analysis
+DPs <- DPs[DPs$Included==1,]
 
 
 SOL<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="MD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.5)

@@ -1,6 +1,6 @@
 ---
 title: "Insomnia NMA"
-subtitle: "Prepared by Virginia Chiocchia on 7th August, refers to a single outcome analysis (Number of participants with adverse events) in a frequentist setting"
+subtitle: "Prepared by Virginia Chiocchia on 7th August, refers to a single outcome analysis (Paradoxical drug reactions/Anxiety) in a frequentist setting"
 output: 
   word_document: 
     fig_height: 7
@@ -22,9 +22,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, include=FALSE}
 library(devtools)
-install_github("esm-ispm-unibe-ch/NMAJags")
-library(NMAJags)
-library(R2jags)
+# install_github("esm-ispm-unibe-ch/NMAJags")
+# library(NMAJags)
+# library(R2jags)
 library(netmeta)
 library(meta)
 library(metafor)
@@ -34,7 +34,7 @@ library(readxl)
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #get the data and select them
-DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean27.6dVirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
 
 
 ```
@@ -43,30 +43,35 @@ DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesCle
 
 ```{r, include=FALSE}
 #prepare the data
-DATApairs=pairwise(treat=Drug_name, event=TotalParticipantsAE, n=`N_arm_total_for sideeffects`, data=DATA, studlab = Study_name, sm= "OR")
+DATApairs=pairwise(treat=Drug_name, event=`Anxiety/Agitation`, n=`N_arm_total_for sideeffects`, data=DATA, studlab = Study_name, sm= "OR")
 #run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
 netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
 #remove rows for studies disconnected from main network
 DPs <- DATApairs[-grep("LAT|MAT|BBT I|Mindfulness|midazolam|hygiene|juice|acupressure|acupuncture",DATApairs$treat1),]
-# remove studies with "special patients" that should not be included in main analysis
-DPs <- DPs[DPs$Included==1,]
-
-
-netconnection(treat1,treat2,studlab,data=DPs,warn = T)
 
 # remove interventions disconnected to main network (also have NA TE and seTE)
 DPs <- DPs[-grep("massage|therapeutic",DPs$treat2),]
 
+# remove studies with "special patients" that should not be included in main analysis
+DPs <- DPs[DPs$Included==1,]
 
-PtsAE<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="OR",r="pbo",comb.fixed =F, comb.random = T)
-PtsAE
+# remove studies with missing TE or seTE 
+DPs <- DPs[!is.na(DPs$TE),]
+
+netconnection(treat1,treat2,studlab,data=DPs,warn = T)
+
+# 2 sub-networks
+DPs1 <- DPs[DPs$treat2!="triazolam",]
+
+
+pdrAE1<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs1,  sm="OR",r="pbo",comb.fixed =F, comb.random = T)
+pdrAE1
 
 ```
 ## Description of the network
 
 
-Below is a description for the network formed by studies examining the outcome Number of Participants with Adverse Events
-
+This network formed by studies examining the outcome Paradoxical Drug Reactions is composed by two sub-networks.
 
 <!-- Below are the total number of participants in each of the included interventions -->
 <!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
@@ -74,13 +79,20 @@ Below is a description for the network formed by studies examining the outcome N
 <!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
 
 <!-- ``` -->
+### Sub-network 1
+
+Below is a description for the sub-network including the following interventions
+```{r, echo=FALSE}
+pdrAE1$trts
+```
+
 Number of included interventions:
 ```{r, echo=FALSE}
-PtsAE$n
+pdrAE1$n
 ```
 Number of included studies:
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-PtsAE$k
+pdrAE1$k
 ```
 
 The following treatments were excluded as they were disconnected to the main network:
@@ -113,7 +125,7 @@ The following treatments were excluded as they were disconnected to the main net
  The plot below shows the available data\
 ```{r, echo=FALSE}
 #network plot
-netgraph(PtsAE, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+netgraph(pdrAE1, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 
@@ -126,7 +138,7 @@ Below are the relative treatment effects from the NMA model.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
 #forest plots
-forest(PtsAE, ref="pbo", sortvar = -Pscore,xlab="OR")
+forest(pdrAE1, ref="pbo", sortvar = -Pscore,xlab="OR")
 ```
 
 
@@ -137,11 +149,11 @@ forest(PtsAE, ref="pbo", sortvar = -Pscore,xlab="OR")
 
 The heterogeneity standard deviation is estimated at
 ```{r, echo=FALSE}
-cat(paste("tau=",round(PtsAE$tau,3)))
+cat(paste("tau=",round(pdrAE1$tau,3)))
 ```
 and I-square (total) is 
 ```{r, echo=FALSE}
-cat(paste("I2=",round(PtsAE$I2, digits = 2)*100,"%"))
+cat(paste("I2=",round(pdrAE1$I2, digits = 2)*100,"%"))
 ```
 
 
@@ -175,31 +187,58 @@ cat(paste("I2=",round(PtsAE$I2, digits = 2)*100,"%"))
 <!-- print(round(a$Q.inc.random$pval,3)) -->
 <!-- ``` -->
 
-
-### Sensitivity analyses and meta-regressions
-
-We run a sensitivity analyses excluding the crossover studies
 ```{r, include=FALSE}
-
-#only non-crossover
-InsoPAEsen=subset(DPs,Crossoverstudy==0 | Crossoverstudy==1 & `crossover, not first phase used`!=1)  
-netconnection(treat1,treat2,studlab,data=InsoPAEsen,warn = T)
-
-PtsAEsen<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoPAEsen,  sm="OR",comb.fixed =F, comb.random = T)
-PtsAEsen
-
-
+pdrAE2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = DPs$treat2=="triazolam", sm="SMD",r="chlormethiazole",comb.fixed =T, comb.random = F)
+pdrAE2
 ```
 
+### Sub-network 2
+
+Below is a description for the sub-network including the following interventions
+
+
 ```{r, echo=FALSE}
+pdrAE2$trts
+```
+
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included interventions:
+```{r, echo=FALSE}
+pdrAE2$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+pdrAE2$k
+```
+
+
+The plot below shows the available data
+
+```{r, echo=FALSE}
+
 #network plot
-netgraph(PtsAEsen, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+netgraph(pdrAE2, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1)
 ```
 
+Below are the relative treatment effects from the NMA model. 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
-forest(PtsAEsen, ref="pbo",sortvar = -Pscore, smlab="Only parallel studies", fontsize=10,xlab="OR")
-
-
+#forest plots
+forest(pdrAE2, ref="chlormethiazole", sortvar = Pscore,xlab="SMD")
 ```
+
+<!-- The heterogeneity standard deviation is estimated at -->
+<!-- ```{r, echo=FALSE} -->
+<!-- cat(paste("tau=",round(SQ2$tau,3))) -->
+<!-- ``` -->
+<!-- and I-square (total) is  -->
+<!-- ```{r, echo=FALSE} -->
+<!-- cat(paste("I2=",round(SQ1$I2),"%")) -->
+<!-- ``` -->

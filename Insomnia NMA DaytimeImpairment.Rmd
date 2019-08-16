@@ -41,29 +41,28 @@ DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesCle
 # prepare the data
 DATApairs=pairwise(treat=Drug_name, mean=DayTimeSleepinessScaleMean, sd=DayTimeSleepinessScaleSD, n=DayTimeSleepinessScaleParticipants, data=DATA, studlab = Study_name, sm= "SMD")
 
-# run netconnection first to check for potential sub-networks
-netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
-
-#remove rows for studies disconnected from main network
-DPs <- DATApairs[-grep("hygiene|Mindfulness|juice",DATApairs$treat1),]
+# check there is no NA is the data
+DPs <- DATApairs[!is.na(DATApairs$TE) & !is.na(DATApairs$seTE),]
 
 # remove studies with "special patients" that should not be included in main analysis
-DPs <- DPs[DPs$Included==1,]
+#DPs <- DPs[DPs$Included==1,]
 
 #check p-value availability for paired t-test for crossover studies with both phases used
 DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","Day_PorF-value","Day_p=0, f=1")]
 # remove studies wit no p-value
-DPs <- DPs[DPs$studlab!="Vinkari 1984",]
-# only crossover study for this outcome so no adjustment and no need for sensitivity
+DPs <- DPs[DPs$studlab!="Vinkari 1984" & DPs$studlab!="Pigeon 2010",]
+# only parallel study for this outcome so no adjustment and no need for sensitivity
+
+# save adjusted pairwise dataset for MAs
+write.csv(DPs, file = "~/Virginia/NMA insomnia/DaytimeImpairment_pairwise.csv")
 
 
-# check there is no NA is the data
-DPs[is.na(DPs$TE) | is.na(DPs$seTE),c("studlab","treat1","treat2","TE","seTE")]
-DPs <- subset(DPs, studlab!="McCall 2006")
-
-
-# check connection again to divide two sub-networks
+# run netconnection first to check for potential sub-networks
 netconnection(treat1,treat2,studlab,data=DPs,warn = T)
+
+#remove rows for studies disconnected from main network
+DPs <- subset(DPs,treat2!="waitlist")
+
 
 
 DPs1 <- DPs[-grep("chlormethiazole|triazolam|loprazolam|nitrazepam|zopiclone",DPs$treat2),]

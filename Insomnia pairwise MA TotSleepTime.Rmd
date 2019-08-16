@@ -44,6 +44,10 @@ DATApairs$tvalue <- qt(as.numeric(DATApairs$`tst_PorF-value`)/2, df=DATApairs$n1
 #DATApairs$rho <- (DATApairs$sd1^2 + DATApairs$sd2^2 - DATApairs$SDd^2)/(2*DATApairs$sd1*DATApairs$sd2)
 DATApairs[DATApairs$Crossoverstudy==1 & DATApairs$`crossover, not first phase used`==1,"seTE"] <- (abs(DATApairs$TE)/DATApairs$tvalue)[DATApairs$Crossoverstudy==1 & DATApairs$`crossover, not first phase used`==1]  
 
+
+# save adjusted pairwise dataset for MAs
+write.csv(DATApairs, file = "~/Virginia/NMA insomnia/TotalSleepTime_pairwise.csv")
+
 ```
 
 ```{r, echo=FALSE}

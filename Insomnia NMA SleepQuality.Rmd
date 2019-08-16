@@ -71,7 +71,7 @@ DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- 
 # DPs[DPs$studlab==18|DPs$studlab==185,"rho"] <- 0.9
 # DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+DPs$TE/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
 # SQ<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, sm="SMD",r="nitrazepam",comb.fixed =F, comb.random = T)
-# SQ    ### after romeving comparison with missing data network has 2 subnetworks
+# SQ    ### after removing comparison with missing data network has 2 subnetworks
 
 
 DPs1 <- DPs[-grep("chlormethiazole|triazolam|loprazolam|nitrazepam|zopiclone",DPs$treat2),]
@@ -150,6 +150,11 @@ Below are the relative treatment effects from the NMA model.
 
 #forest plots
 forest(SQ1, ref="pbo", sortvar = Pscore,xlab="SMD")
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+netleague(SQ1)
 ```
 
 <!-- The P-scores (equivalent to the SUCRAs) are shown below -->

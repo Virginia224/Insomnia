@@ -1,6 +1,6 @@
 ---
 title: "Insomnia NMA"
-subtitle: "Prepared by Virginia Chiocchia on 7th August, refers to a single outcome analysis (Number of participants with adverse events) in a frequentist setting"
+subtitle: "Prepared by Virginia Chiocchia on 16th August, refers to a single outcome analysis (Total number of dropouts) in a frequentist setting"
 output: 
   word_document: 
     fig_height: 7
@@ -34,7 +34,7 @@ library(readxl)
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #get the data and select them
-DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesClean27.6dVirgiRenamedInterventions.xlsx", na = "NA")
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean27.6eVirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
 
 
 ```
@@ -43,29 +43,29 @@ DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesCle
 
 ```{r, include=FALSE}
 #prepare the data
-DATApairs=pairwise(treat=Drug_name, event=TotalParticipantsAE, n=`N_arm_total_for sideeffects`, data=DATA, studlab = Study_name, sm= "OR")
-#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
-netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+DATApairs=pairwise(treat=Drug_name, event=as.numeric(DO_total), n=N_arm_total_stapf, data=DATA, studlab = Study_name, sm= "OR")
+# remove studies with missing TE or seTE 
+DPs <- DATApairs[!is.na(DATApairs$TE),]
+
+# remove Dement 1991 because only data for one comparison so gives error when running netmeta
+DPs <- DPs[DPs$studlab!="Dement 1991",]
+
+netconnection(treat1,treat2,studlab,data=DPs,warn = T)
 #remove rows for studies disconnected from main network
-DPs <- DATApairs[-grep("LAT|MAT|BBT I|Mindfulness|midazolam|hygiene|juice|acupressure|acupuncture",DATApairs$treat1),]
+DPs <- DPs[-grep("LAT|MAT|BBT I|Mindfulness|massage|juice|control?",DPs$treat1),]
 # remove studies with "special patients" that should not be included in main analysis
 DPs <- DPs[DPs$Included==1,]
 
 
-netconnection(treat1,treat2,studlab,data=DPs,warn = T)
 
-# remove interventions disconnected to main network (also have NA TE and seTE)
-DPs <- DPs[-grep("massage|therapeutic",DPs$treat2),]
-
-
-PtsAE<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="OR",r="pbo",comb.fixed =F, comb.random = T)
-PtsAE
+DOtot<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="OR",r="pbo",comb.fixed =F, comb.random = T)
+DOtot
 
 ```
 ## Description of the network
 
 
-Below is a description for the network formed by studies examining the outcome Number of Participants with Adverse Events
+Below is a description for the network formed by studies examining the outcome Total Number of Dropouts
 
 
 <!-- Below are the total number of participants in each of the included interventions -->
@@ -76,11 +76,11 @@ Below is a description for the network formed by studies examining the outcome N
 <!-- ``` -->
 Number of included interventions:
 ```{r, echo=FALSE}
-PtsAE$n
+DOtot$n
 ```
 Number of included studies:
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-PtsAE$k
+DOtot$k
 ```
 
 The following treatments were excluded as they were disconnected to the main network:
@@ -89,31 +89,24 @@ The following treatments were excluded as they were disconnected to the main net
 * LAT
 * MAT+LAT
 * massage
-* therapeutic touch
 * control/no intervention
-* mimic therapeutic touch
 * Mindfulness Based Stress Reduction Program
 * waitlist
-* sleep hygiene
-* lormetazepam + sleep hygiene
 * BBT I
 * self-monitoring control
 * auricular acupuncture
 * control?
-* acupressure
-* sham acupressure
 * artificial juice
 * tart cherry juice 
-* midazolam
-* oxazepam
-  
+
+The multiarm study Dement 1991 was also excluded because data was only available for one comparison.
 \    
 
   
  The plot below shows the available data\
 ```{r, echo=FALSE}
 #network plot
-netgraph(PtsAE, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+netgraph(DOtot, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 
@@ -126,7 +119,7 @@ Below are the relative treatment effects from the NMA model.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
 #forest plots
-forest(PtsAE, ref="pbo", sortvar = -Pscore,xlab="OR")
+forest(DOtot, ref="pbo", sortvar = -Pscore,xlab="OR")
 ```
 
 
@@ -137,11 +130,11 @@ forest(PtsAE, ref="pbo", sortvar = -Pscore,xlab="OR")
 
 The heterogeneity standard deviation is estimated at
 ```{r, echo=FALSE}
-cat(paste("tau=",round(PtsAE$tau,3)))
+cat(paste("tau=",round(DOtot$tau,3)))
 ```
 and I-square (total) is 
 ```{r, echo=FALSE}
-cat(paste("I2=",round(PtsAE$I2, digits = 2)*100,"%"))
+cat(paste("I2=",round(DOtot$I2, digits = 2)*100,"%"))
 ```
 
 
@@ -182,24 +175,24 @@ We run a sensitivity analyses excluding the crossover studies
 ```{r, include=FALSE}
 
 #only non-crossover
-InsoPAEsen=subset(DPs,Crossoverstudy==0 | Crossoverstudy==1 & `crossover, not first phase used`!=1)  
-netconnection(treat1,treat2,studlab,data=InsoPAEsen,warn = T)
+InsoDOsen=subset(DPs,Crossoverstudy==0 | Crossoverstudy==1 & `crossover, not first phase used`!=1)  
+netconnection(treat1,treat2,studlab,data=InsoDOsen,warn = T)
 
-PtsAEsen<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoPAEsen,  sm="OR",comb.fixed =F, comb.random = T)
-PtsAEsen
+DOsen<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoDOsen,  sm="OR",comb.fixed =F, comb.random = T)
+DOsen
 
 
 ```
 
 ```{r, echo=FALSE}
 #network plot
-netgraph(PtsAEsen, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+netgraph(DOsen, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
 ```
 
 
 ```{r, echo=FALSE}
 
-forest(PtsAEsen, ref="pbo",sortvar = -Pscore, smlab="Only parallel studies", fontsize=10,xlab="OR")
+forest(DOsen, ref="pbo",sortvar = -Pscore, smlab="Only parallel studies", fontsize=10,xlab="OR")
 
 
 ```

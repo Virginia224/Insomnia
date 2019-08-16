@@ -49,7 +49,7 @@ netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
 #remove rows for studies disconnected from main network
 DPs <- DATApairs[-grep("LAT|MAT|BBT I|Mindfulness|midazolam|hygiene|juice|acupressure|acupuncture",DATApairs$treat1),]
 # remove studies with "special patients" that should not be included in main analysis
-#DPs <- DPs[DPs$Included==1,]
+DPs <- DPs[DPs$Included==1,]
 
 # remove interventions disconnected to main network (also have NA TE and seTE)
 DPs <- DPs[-grep("massage|therapeutic",DPs$treat2),]
@@ -112,7 +112,8 @@ The following treatments were excluded as they were disconnected to the main net
 * tart cherry juice 
 * midazolam
 * oxazepam
-  
+
+The multiarm study Dement 1991 was also excluded because data was only available for one comparison. Study Klimm 1987 was also excluded because disconnected to the rest of the network.
 \    
 
   

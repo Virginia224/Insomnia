@@ -128,6 +128,11 @@ Below are the relative treatment effects from the NMA model.
 #forest plots
 forest(TST, ref="pbo", sortvar = -Pscore,xlab="MD")
 ```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+netleague(TST)
+```
 
 
 <!-- The P-scores (equivalent to the SUCRAs) are shown below -->

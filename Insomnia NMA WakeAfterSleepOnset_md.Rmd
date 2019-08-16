@@ -41,13 +41,10 @@ DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoIncludedAllOutcomesCle
 # prepare the data
 DATApairs=pairwise(treat=Drug_name, mean=WakeAfterSleepOnsetScaleMean, sd=WakeAfterSleepOnsetScaleSD, n=WakeAfterSleepOnsetScaleParticipants, data=DATA, studlab = Study_name, sm= "MD")
 
-# run netconnection first to check for potential sub-networks
-netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
 
-#remove rows for studies disconnected from main network
-DPs <- DATApairs[-grep("LAT|MAT|BBT I|juice",DATApairs$treat1),]
-# remove studies with "special patients" that should not be included in main analysis
-# DPs <- DPs[DPs$Included==1,]
+# check there is no NA is the data
+DPs <- DATApairs[!is.na(DATApairs$TE) & !is.na(DATApairs$seTE),]
+
 
 #check p-value availability for paired t-test for crossover studies with both phases used
 DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","waso_PorF-value","waso_p=0, f=1")]
@@ -62,9 +59,17 @@ DPs$tvalue <- qt(as.numeric(DPs$`waso_PorF-value`)/2, df=DPs$n1-1, lower.tail = 
 DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- (abs(DPs$TE)/DPs$tvalue)[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
 
 
-# check there is no NA is the data
-DPs[is.na(DPs$TE) | is.na(DPs$seTE),c("studlab","treat1","treat2","TE","seTE")]
+# save adjusted pairwise dataset for MAs
+write.csv(DPs, file = "~/Virginia/NMA insomnia/WakeAfterSleepOnset_pairwise.csv")
 
+
+# run netconnection first to check for potential sub-networks
+netconnection(treat1,treat2,studlab,data=DPs,warn = T)
+
+#remove rows for studies disconnected from main network
+DPs <- DPs[-grep("LAT|MAT|BBT I|juice",DATApairs$treat1),]
+# remove studies with "special patients" that should not be included in main analysis
+# DPs <- DPs[DPs$Included==1,]
 
 WASO<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="MD",r="pbo",comb.fixed =F, comb.random = T)
 WASO
