@@ -28,6 +28,7 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -103,6 +104,13 @@ Below are the relative treatment effects from the NMA model.
 
 #forest plots
 forest(QOL, ref="pbo", sortvar = -Pscore,xlab="MD")
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueQOL <- netleague(QOL, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueQOL$random, file = "leagueQOL-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
 ```
 
 The heterogeneity standard deviation is estimated at

@@ -29,6 +29,7 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 
@@ -130,8 +131,10 @@ forest(TST, ref="pbo", sortvar = -Pscore,xlab="MD")
 ```
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
-#forest plots
-netleague(TST)
+# create league table and export as excel
+leagueTST <- netleague(TST, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueTST$random, file = "leagueTST-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
 ```
 
 

@@ -1,0 +1,275 @@
+---
+title: "Insomnia NMA"
+subtitle: "Prepared by Virginia Chiocchia on 4th October, refers to sensitivity analyses for a single outcome (Total Sleep Time) in a frequentist setting"
+output: 
+  word_document: 
+    fig_height: 7
+    fig_width: 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+<!-- Make sure you have the needed libraries from R-Cran and Github: -->
+<!-- devtools -->
+<!-- NMAJags -->
+<!-- R2jags -->
+<!-- netmeta -->
+<!-- meta -->
+<!-- metafor -->
+<!-- readxl -->
+
+
+```{r, include=FALSE}
+library(devtools)
+install_github("esm-ispm-unibe-ch/NMAJags")
+library(NMAJags)
+library(R2jags)
+library(netmeta)
+library(meta)
+library(metafor)
+library(readxl)
+library(xlsx)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#get the data and select them
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean30.9VirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
+
+
+```
+
+
+
+```{r, include=FALSE}
+#prepare the data
+DATApairs=pairwise(treat=Drug_name,mean=SleepTimeTotalScaleMean,sd=SleepTimeTotalScaleSD,n=SleepTimeTotalScaleParticipants, data=DATA, studlab = Final_ID_all, sm= "MD")
+#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
+netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+#remove rows for studies disconnected from main network
+DPs <- DATApairs[-grep("LAT|MAT|BBT I|midazolam|hygiene|juice",DATApairs$treat1),]
+# save studies with "special patients" in separate dataframe
+DPs_PsychogerPts <- DPs[DPs$Included==2,]
+
+#check p-value availability for paired t-test for crossover studies with both phases used
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","tst_PorF-value","tst_p=0, f=1")]
+# use threshold value for those with p-value <0.001
+DPs[DPs$studlab==185, "tst_PorF-value"] <- 0.00099
+#now calculate adjusted SE for remaining crossover studies
+DPs$tvalue <- qt(as.numeric(DPs$`tst_PorF-value`)/2, df=DPs$n1-1, lower.tail = F)
+#DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
+#DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- (abs(DPs$TE)/DPs$tvalue)[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+
+
+#   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    
+    ### gives error: Problems in multi-arm studies! Studies with negative treatment   arm variance: '18', '185'
+
+# assign correlation value to study 18 and 185 based on other studies to fix issues with negative variances
+DPs$rho <- 0.9
+DPs$SDd <- sqrt(DPs$sd1^2 + DPs$sd2^2 - 2*DPs$rho*DPs$sd1*DPs$sd2)
+DPs[DPs$studlab==18 | DPs$studlab==185,"seTE"] <- (DPs$SDd/sqrt(DPs$n1))[DPs$studlab==18 | DPs$studlab==185] 
+TST_s1<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="MD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.5)
+TST_s1
+
+```
+## Description of the network - sensitivity analysis 1 (include Psychogeriatric patients)
+
+
+Below is a description for the network formed by studies examining the outcome Total Sleep Time also in Psychogeriatric patients.
+
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included interventions:
+```{r, echo=FALSE}
+TST_s1$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+TST_s1$k
+```
+
+The following treatments were excluded as they were disconnected to the main network:
+
+  * MAT
+  * LAT
+  * MAT+LAT
+  * sleep hygiene
+  * lormetazepam + sleep hygiene
+  * BBT I
+  * self-monitoring control
+  * midazolam
+  * oxazepam
+  * artificial juice
+  * tart cherry juice  
+  
+\    
+
+  
+ The plot below shows the available data\
+```{r, echo=FALSE}
+#network plot
+netgraph(TST_s1, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+```
+
+
+
+
+## Frequentist network meta-analysis 
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(TST_s1, ref="pbo", sortvar = -Pscore,xlab="MD")
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueTST_s1 <- netleague(TST_s1, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueTST_s1$random, file = "leagueTST_s1-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
+```
+
+
+<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
+<!-- ```{r, echo=FALSE} -->
+<!-- netrank(TST, small.values = "bad") -->
+<!-- ``` -->
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(TST_s1$tau,3)))
+```
+and I-square (total) is 
+```{r, echo=FALSE}
+cat(paste("I2=",round(TST_s1$I2, digits = 2)*100,"%"))
+```
+
+
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#get the data for sensitivity analysis by drug group
+DATA2 <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean4.10VirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
+
+
+```
+
+```{r, include=FALSE}
+#prepare the data
+DATApairs2=pairwise(treat=`Drug Group`,mean=SleepTimeTotalScaleMean,sd=SleepTimeTotalScaleSD,n=SleepTimeTotalScaleParticipants, data=DATA2, studlab = Final_ID_all, sm= "MD")
+#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
+netconnection(treat1,treat2,studlab,data=DATApairs2,warn = T)
+#remove rows for studies disconnected from main network
+DPs2 <- DATApairs2[-grep("LAT|MAT|BBT I|hygiene|juice",DATApairs2$treat1),]
+# # save studies with "special patients" in separate dataframe
+# DPs_PsychogerPts <- DPs[DPs$Included==2,]
+# 
+#check p-value availability for paired t-test for crossover studies with both phases used
+DPs2[DPs2$Crossoverstudy==1 & DPs2$`crossover, not first phase used`==1,c("studlab","tst_PorF-value","tst_p=0, f=1")]
+# use threshold value for those with p-value <0.001
+DPs2[DPs2$studlab==185, "tst_PorF-value"] <- 0.00099
+#now calculate adjusted SE for remaining crossover studies
+DPs2$tvalue <- qt(as.numeric(DPs2$`tst_PorF-value`)/2, df=DPs2$n1-1, lower.tail = F)
+# #DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
+# #DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
+DPs2[DPs2$Crossoverstudy==1 & DPs2$`crossover, not first phase used`==1,"seTE"] <- (abs(DPs2$TE)/DPs2$tvalue)[DPs2$Crossoverstudy==1 & DPs2$`crossover, not first phase used`==1] 
+
+#   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)
+    ### gives error: Problems in multi-arm studies! Studies with negative treatment   arm variance: '18'
+
+# assign correlation value to study 18 based on other studies to fix issues with negative variances
+DPs2$rho <- 0.9
+DPs2$SDd <- sqrt(DPs2$sd1^2 + DPs2$sd2^2 - 2*DPs2$rho*DPs2$sd1*DPs2$sd2)
+DPs2[DPs2$studlab==18,"seTE"] <- (DPs2$SDd/sqrt(DPs2$n1))[DPs2$studlab==18]
+TST_s2<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs2,  sm="MD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.5)
+TST_s2
+
+```
+## Description of the network - sensitivity analysis 2 (by drug group)
+
+
+Below is a description for the network formed by studies examining the outcome Total Sleep Time analysed by drug groups.
+
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included drug groups:
+```{r, echo=FALSE}
+TST_s2$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+TST_s2$k
+```
+
+The following treatments were excluded as they were disconnected to the main network:
+
+  * MAT
+  * LAT
+  * MAT+LAT
+  * sleep hygiene
+  * lormetazepam + sleep hygiene
+  * BBT I
+  * self-monitoring control
+  * artificial juice
+  * tart cherry juice
+
+Other studies have also been excluded prior to the sensitivity analysis if they were comparing two interventions of the same "drug group".
+
+\
+
+
+ The plot below shows the available data\
+```{r, echo=FALSE}
+#network plot
+netgraph(TST_s2, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+```
+
+
+
+
+## Frequentist network meta-analysis
+
+Below are the relative treatment effects from the NMA model.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(TST_s2, ref="pbo", sortvar = -Pscore,xlab="MD")
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueTST_s2 <- netleague(TST_s2, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueTST_s2$random, file = "leagueTST_s2-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
+```
+
+
+<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
+<!-- ```{r, echo=FALSE} -->
+<!-- netrank(TST, small.values = "bad") -->
+<!-- ``` -->
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(TST_s2$tau,3)))
+```
+and I-square (total) is
+```{r, echo=FALSE}
+cat(paste("I2=",round(TST_s2$I2, digits = 2)*100,"%"))
+```

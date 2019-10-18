@@ -29,6 +29,7 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 
@@ -130,6 +131,14 @@ Below are the relative treatment effects from the NMA model.
 
 #forest plots
 forest(NNA, ref="pbo", sortvar = -Pscore,xlab="MD")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueNNA <- netleague(NNA, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueNNA$random, file = "leagueNumNoctAwak-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
 ```
 
 

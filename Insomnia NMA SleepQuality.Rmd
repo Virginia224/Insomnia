@@ -30,6 +30,7 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 
@@ -153,8 +154,10 @@ forest(SQ1, ref="pbo", sortvar = Pscore,xlab="SMD")
 ```
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
-#forest plots
-netleague(SQ1)
+# create league table and export as excel
+leagueSQ1 <- netleague(SQ1, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueSQ1$random, file = "leagueSQ1-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
 ```
 
 <!-- The P-scores (equivalent to the SUCRAs) are shown below -->
@@ -204,7 +207,7 @@ cat(paste("I2=",round(SQ1$I2, digits = 2)*100,"%"))
 
 
 ```{r, include=FALSE}
-SQ2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =T, comb.random = F)
+SQ2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = grep("chlormethiazole|triazolam|loprazolam|nitrazepam",DPs$treat1), sm="SMD",r="chlormethiazole",comb.fixed =F, comb.random = T)
 SQ2
 ```
 
@@ -248,6 +251,14 @@ Below are the relative treatment effects from the NMA model.
 
 #forest plots
 forest(SQ2, ref="chlormethiazole", sortvar = Pscore,xlab="SMD")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueSQ2 <- netleague(SQ2, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueSQ2$random, file = "leagueSQ2-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
 ```
 
 <!-- The P-scores (equivalent to the SUCRAs) are shown below -->

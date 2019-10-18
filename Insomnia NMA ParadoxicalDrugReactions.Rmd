@@ -29,12 +29,13 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #get the data and select them
-DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean27.6dVirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean27.6eVirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
 
 
 ```
@@ -47,10 +48,10 @@ DATApairs=pairwise(treat=Drug_name, event=`Anxiety/Agitation`, n=`N_arm_total_fo
 #run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
 netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
 #remove rows for studies disconnected from main network
-DPs <- DATApairs[-grep("LAT|MAT|BBT I|Mindfulness|midazolam|hygiene|juice|acupressure|acupuncture",DATApairs$treat1),]
+DPs <- DATApairs[-grep("LAT|MAT|BBT I|Mindfulness|massage|hygiene|juice|acupressure|acupuncture",DATApairs$treat1),]
 
 # remove interventions disconnected to main network (also have NA TE and seTE)
-DPs <- DPs[-grep("massage|therapeutic",DPs$treat2),]
+DPs <- DPs[-grep("therapeutic|midazolam",DPs$treat2),]
 
 # remove studies with "special patients" that should not be included in main analysis
 DPs <- DPs[DPs$Included==1,]
@@ -140,6 +141,13 @@ Below are the relative treatment effects from the NMA model.
 #forest plots
 forest(pdrAE1, ref="pbo", sortvar = -Pscore,xlab="OR")
 ```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leaguePDR1 <- netleague(pdrAE1, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leaguePDR1$random, file = "leaguePDR1-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
+```
 
 
 <!-- The P-scores (equivalent to the SUCRAs) are shown below -->
@@ -188,7 +196,7 @@ cat(paste("I2=",round(pdrAE1$I2, digits = 2)*100,"%"))
 <!-- ``` -->
 
 ```{r, include=FALSE}
-pdrAE2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = DPs$treat2=="triazolam", sm="SMD",r="chlormethiazole",comb.fixed =T, comb.random = F)
+pdrAE2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = DPs$treat2=="triazolam", sm="SMD",r="chlormethiazole",comb.fixed =F, comb.random = T)
 pdrAE2
 ```
 
@@ -232,6 +240,14 @@ Below are the relative treatment effects from the NMA model.
 
 #forest plots
 forest(pdrAE2, ref="chlormethiazole", sortvar = Pscore,xlab="SMD")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leaguePDR2 <- netleague(pdrAE2, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leaguePDR2$random, file = "leaguePDR2-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
 ```
 
 <!-- The heterogeneity standard deviation is estimated at -->

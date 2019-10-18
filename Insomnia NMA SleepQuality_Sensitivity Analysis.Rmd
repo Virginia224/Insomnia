@@ -1,0 +1,193 @@
+---
+title: "Insomnia NMA"
+subtitle: "Prepared by Virginia Chiocchia on 9th October, refers to sensitivity analyses for a single outcome (Sleep Quality) in a frequentist setting"
+output: 
+  word_document: 
+    fig_height: 7
+    fig_width: 10
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Make sure you have the needed libraries from R-Cran and Github: -->
+<!-- devtools -->
+<!-- NMAJags -->
+<!-- R2jags -->
+<!-- netmeta -->
+<!-- meta -->
+<!-- metafor -->
+<!-- readxl -->
+
+
+```{r, include=FALSE}
+library(devtools)
+install_github("esm-ispm-unibe-ch/NMAJags")
+library(NMAJags)
+library(R2jags)
+library(netmeta)
+library(meta)
+library(metafor)
+library(readxl)
+library(xlsx)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+### no need for sensitivity analysis including psychogeriatric patients as only study including them for this outcome is disconnected to the rest of the network  
+
+#get the data and select them
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean4.10VirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
+
+```
+
+
+
+
+```{r, include=FALSE}
+#prepare the data
+DATApairs=pairwise(treat=`Drug Group`,mean=SleepQualityScaleMean,sd=SleepQualityScaleSD,n=SleepQualityScaleParticipants, data=DATA, studlab = Final_ID_all, sm= "SMD")
+#run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
+netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
+
+#remove rows for studies disconnected from main network
+DPs <- subset(DATApairs, treat1!="BBT I" & treat1!="auricular acupuncture")
+DPs <- DPs[-grep("LAT|MAT|acupressure|waitlist|therapeutic|hygiene|juice",DPs$treat2),]
+#check p-value availability for paired t-test for crossover studies with both phases used
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,c("studlab","squal_PorF-value","squal_p=0, f=1")]
+# use threshold value for those with p-value <0.025
+DPs[DPs$studlab==17, "squal_PorF-value"] <- 0.02499
+# remove studies for which no p-value available
+DPs <- DPs[DPs$studlab!=21,]
+# now calculate adjusted SE for remaining crossover studies
+DPs$tvalue <- qt(as.numeric(DPs$`squal_PorF-value`)/2, df=DPs$n1-1, lower.tail = F)
+DPs$SDd <- abs((DPs$mean2-DPs$mean1)/DPs$tvalue*sqrt(DPs$n1))
+DPs$rho <- (DPs$sd1^2 + DPs$sd2^2 - DPs$SDd^2)/(2*DPs$sd1*DPs$sd2)
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+(DPs$TE^2)/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+
+
+#   EFF<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs,  sm="SMD",r="pbo",comb.fixed =F, comb.random = T, tol.multiarm = 0.05, details.chkmultiarm = T)    
+    ### gives error: Problems in multi-arm studies! Studies with negative treatment   arm variance: '18', '185'
+
+# assign other correlation value to study 18 based on other studies
+
+
+DPs[,c("studlab","rho")]
+DPs[DPs$studlab==18,"rho"] <- 0.9
+DPs[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1,"seTE"] <- sqrt((1/DPs$n1+(DPs$TE^2)/(2*DPs$n1))*(2-2*DPs$rho))[DPs$Crossoverstudy==1 & DPs$`crossover, not first phase used`==1] 
+
+## one study with missing data but netmeta will exclude automatically
+SQs<-netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, sm="SMD",r="pbo",comb.fixed =F, comb.random = T)
+SQs
+
+```
+
+## Description of the network - sensitivity analysis (by drug group)
+
+The following treatments were excluded as they were disconnected to the two main network:
+
+* MAT
+* LAT
+* MAT+LAT
+* therapeutic touch
+* control/no intervention
+* mimic therapeutic touch
+* Mindfulness Based Stress Reduction Program
+* waitlist
+* sleep hygiene
+* lormetazepam + sleep hygiene
+* BBT I
+* self-monitoring control
+* auricular acupuncture
+* control?
+* acupressure
+* sham acupressure
+* artificial juice
+* tart cherry juice 
+
+
+
+Below is a description for the network formed by studies examining the outcome Sleep Quality analysed by drug groups.
+
+```{r, echo=FALSE}
+SQs$trts
+```
+
+
+<!-- Below are the total number of participants in each of the included interventions -->
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- #describe the data -->
+<!-- tapply(DATAs$N_arm_total_stapf,DATAs$Drug_name,sum,na.rm=T) -->
+
+<!-- ``` -->
+Number of included interventions:
+```{r, echo=FALSE}
+SQs$n
+```
+Number of included studies:
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+SQs$k
+```
+
+
+
+The plot below shows the available data
+
+```{r, echo=FALSE}
+
+#network plot
+netgraph(SQs, plastic=F, thickness="number.of.studies", multiarm = F, points=T, col=1, number.of.studies=T)
+```
+
+
+Below are the relative treatment effects from the NMA model. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#forest plots
+forest(SQs, ref="pbo", sortvar = Pscore,xlab="SMD")
+```
+
+<!-- The P-scores (equivalent to the SUCRAs) are shown below -->
+<!-- ```{r, echo=FALSE} -->
+<!-- netrank(SQ1) -->
+<!-- ``` -->
+
+The heterogeneity standard deviation is estimated at
+```{r, echo=FALSE}
+cat(paste("tau=",round(SQs$tau,3)))
+```
+and I-square (total) is 
+```{r, echo=FALSE}
+cat(paste("I2=",round(SQs$I2, digits = 2)*100,"%"))
+```
+
+<!-- There is little/no/important evidence of inconsistency in the data. There are in total -->
+
+<!-- ```{r echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- split=netsplit(SQ1) -->
+<!-- SIDEp=split$compare.random$p -->
+<!-- SIDEp=SIDEp[!is.na(SIDEp)] -->
+<!-- #proportion of inconsistent loops -->
+<!-- cat(length(SIDEp)) -->
+<!-- ``` -->
+
+<!-- comparisons in the network, and there is inconsistency (according to SIDE p-value<0.10) in -->
+
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(length(SIDEp[SIDEp<=0.1])) -->
+<!-- ``` -->
+<!-- loops which gives a % of inconsistent loops equal to -->
+<!-- ```{r, echo=F, message=FALSE, warning=FALSE} -->
+<!-- cat(paste(round((length(SIDEp[SIDEp<=0.1])/length(SIDEp))*100,1),"%")) -->
+<!-- ``` -->
+
+
+
+<!-- The p-value from the design-by-treatment test is -->
+
+<!-- ```{r, echo=FALSE, message=FALSE, warning=FALSE} -->
+<!-- a=decomp.design(SQ1) -->
+<!-- print(round(a$Q.inc.random$pval,3)) -->
+<!-- ``` -->

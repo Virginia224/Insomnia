@@ -29,6 +29,7 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 
@@ -122,6 +123,13 @@ Below are the relative treatment effects from the NMA model.
 forest(DOtot, ref="pbo", sortvar = -Pscore,xlab="OR")
 ```
 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueDOtot <- netleague(DOtot, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueDOtot$random, file = "leagueDOtot-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
+```
 
 <!-- The P-scores (equivalent to the SUCRAs) are shown below -->
 <!-- ```{r, echo=FALSE} -->

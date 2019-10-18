@@ -28,6 +28,7 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -125,6 +126,13 @@ Below are the relative treatment effects from the NMA model.
 #forest plots
 forest(DI1, ref="pbo", sortvar = -Pscore,xlab="MD")
 ```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueDI1 <- netleague(DI1, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueDI1$random, file = "leagueDI1-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
+```
 
 The heterogeneity standard deviation is estimated at
 ```{r, echo=FALSE}
@@ -212,6 +220,13 @@ Below are the relative treatment effects from the NMA model.
 forest(DI2, ref="chlormethiazole", sortvar = -Pscore,xlab="SMD")
 ```
 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueDI2 <- netleague(DI2, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueDI2$random, file = "leagueDI2-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
+```
 <!-- The P-scores (equivalent to the SUCRAs) are shown below -->
 <!-- ```{r, echo=FALSE} -->
 <!-- netrank(SQ2) -->

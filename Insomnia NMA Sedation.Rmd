@@ -29,12 +29,13 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 #get the data and select them
-DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean27.6dVirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
+DATA <- read_excel("~/Virginia/NMA insomnia/Insomnia/MyrtoClean27.6eVirgiRenamedIntervSideEffectsClean.xlsx", na = "NA")
 
 
 ```
@@ -47,10 +48,10 @@ DATApairs=pairwise(treat=Drug_name, event=SOMNOLENCE, n=`N_arm_total_for sideeff
 #run NMA and create an object called EFF for efficacy   ### gives error because consists of 5 separate sub-networks so run netconnection first
 netconnection(treat1,treat2,studlab,data=DATApairs,warn = T)
 #remove rows for studies disconnected from main network
-DPs <- DATApairs[-grep("LAT|MAT|BBT I|Mindfulness|midazolam|hygiene|juice|acupressure|acupuncture",DATApairs$treat1),]
+DPs <- DATApairs[-grep("LAT|MAT|BBT I|Mindfulness|massage|hygiene|juice|acupressure|acupuncture",DATApairs$treat1),]
 
 # remove interventions disconnected to main network (also have NA TE and seTE)
-DPs <- DPs[-grep("massage|therapeutic",DPs$treat2),]
+DPs <- DPs[-grep("midazolam|therapeutic",DPs$treat2),]
 
 # remove studies with "special patients" that should not be included in main analysis
 DPs <- DPs[DPs$Included==1,]
@@ -189,7 +190,7 @@ We run a sensitivity analyses excluding the crossover studies
 InsoSEDsen=subset(DPs,Crossoverstudy==0 | Crossoverstudy==1 & `crossover, not first phase used`!=1)  
 netconnection(treat1,treat2,studlab,data=InsoSEDsen,warn = T)
 
-InsoSEDsen <- subset(InsoSEDsen, treat1!="nitrazepam" & treat2!="zopiclone")
+InsoSEDsen <- subset(InsoSEDsen, treat1!="zopiclone" & treat2!="nitrazepam")
 
 SEDsen<-netmeta(TE,seTE,treat1,treat2,studlab,data=InsoSEDsen,  sm="OR",comb.fixed =F, comb.random = T)
 SEDsen
@@ -209,5 +210,13 @@ netgraph(SEDsen, plastic=F, thickness="number.of.studies", multiarm = F, points=
 
 forest(SEDsen, ref="pbo",sortvar = -Pscore, smlab="Only parallel studies", fontsize=10,xlab="OR")
 
-
 ```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leagueSedAE<- netleague(SedAE, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leagueSedAE$random, file = "leagueSedAE-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
+```
+

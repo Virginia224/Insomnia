@@ -28,6 +28,7 @@ library(netmeta)
 library(meta)
 library(metafor)
 library(readxl)
+library(xlsx)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
@@ -114,6 +115,13 @@ Below are the relative treatment effects from the NMA model.
 
 #forest plots
 forest(polyTST, ref="pbo", sortvar = Pscore,xlab="MD")
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# create league table and export as excel
+leaguePolyTST <- netleague(polyTST, digits = 2, bracket = "(", separator = " to ")
+write.xlsx(leaguePolyTST$random, file = "leaguePolyTST-random.xls",
+         sheetName = "leaguetable (random)", col.names = F, row.names = F)
 ```
 
 The heterogeneity standard deviation is estimated at
