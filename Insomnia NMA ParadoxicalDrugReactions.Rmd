@@ -196,7 +196,7 @@ cat(paste("I2=",round(pdrAE1$I2, digits = 2)*100,"%"))
 <!-- ``` -->
 
 ```{r, include=FALSE}
-pdrAE2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = DPs$treat2=="triazolam", sm="SMD",r="chlormethiazole",comb.fixed =F, comb.random = T)
+pdrAE2 <- netmeta(TE,seTE,treat1,treat2,studlab,data=DPs, subset = DPs$treat2=="triazolam", sm="OR",r="chlormethiazole",comb.fixed =F, comb.random = T)
 pdrAE2
 ```
 
@@ -239,7 +239,7 @@ Below are the relative treatment effects from the NMA model.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
 #forest plots
-forest(pdrAE2, ref="chlormethiazole", sortvar = Pscore,xlab="SMD")
+forest(pdrAE2, ref="chlormethiazole", sortvar = Pscore,xlab="OR")
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
